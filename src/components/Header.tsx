@@ -1,10 +1,13 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Ticket, Shield, Users, BarChart3 } from 'lucide-react';
+import { Menu, X, Ticket, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   return (
     <header className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b border-border/50 z-50">
@@ -23,23 +26,46 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             <div className="flex items-center space-x-6">
-              <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link to="/features" className="text-muted-foreground hover:text-foreground transition-colors">
                 Features
-              </a>
-              <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
+              </Link>
+              <Link to="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
                 Pricing
-              </a>
-              <a href="#security" className="text-muted-foreground hover:text-foreground transition-colors">
+              </Link>
+              <Link to="/security" className="text-muted-foreground hover:text-foreground transition-colors">
                 Security
-              </a>
+              </Link>
             </div>
             <div className="flex items-center space-x-3">
-              <Button variant="ghost">
-                Sign In
-              </Button>
-              <Button className="bg-gradient-primary hover:opacity-90 transition-opacity">
-                Start Free Trial
-              </Button>
+              {user ? (
+                <>
+                  <Link to="/profile">
+                    <Button variant="ghost">
+                      <User className="w-4 h-4 mr-2" />
+                      My Account
+                    </Button>
+                  </Link>
+                  <Link to="/dashboard">
+                    <Button className="bg-gradient-primary hover:opacity-90 transition-opacity">
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" onClick={() => signOut()}>
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link to="/auth">
+                    <Button variant="ghost">Sign In</Button>
+                  </Link>
+                  <Link to="/auth">
+                    <Button className="bg-gradient-primary hover:opacity-90 transition-opacity">
+                      Start Free Trial
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
 

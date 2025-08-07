@@ -14,7 +14,243 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      event_benefits: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      event_tickets: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          is_used: boolean | null
+          pin_code: string
+          qr_code: string
+          selected_benefits: string[] | null
+          ticket_holder_email: string
+          ticket_holder_name: string
+          updated_at: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          is_used?: boolean | null
+          pin_code: string
+          qr_code: string
+          selected_benefits?: string[] | null
+          ticket_holder_email: string
+          ticket_holder_name: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          is_used?: boolean | null
+          pin_code?: string
+          qr_code?: string
+          selected_benefits?: string[] | null
+          ticket_holder_email?: string
+          ticket_holder_name?: string
+          updated_at?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_tickets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          available_benefits: string[] | null
+          company_name: string | null
+          created_at: string
+          description: string | null
+          event_date: string
+          event_end_date: string | null
+          id: string
+          location: string | null
+          max_attendees: number | null
+          organizer_id: string
+          ticket_price: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          available_benefits?: string[] | null
+          company_name?: string | null
+          created_at?: string
+          description?: string | null
+          event_date: string
+          event_end_date?: string | null
+          id?: string
+          location?: string | null
+          max_attendees?: number | null
+          organizer_id: string
+          ticket_price?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          available_benefits?: string[] | null
+          company_name?: string | null
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          event_end_date?: string | null
+          id?: string
+          location?: string | null
+          max_attendees?: number | null
+          organizer_id?: string
+          ticket_price?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_organizer_id_fkey"
+            columns: ["organizer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          features: Json
+          id: string
+          max_events: number | null
+          max_tickets: number | null
+          name: string
+          period: string
+          popular: boolean | null
+          price: number
+        }
+        Insert: {
+          created_at?: string
+          features?: Json
+          id?: string
+          max_events?: number | null
+          max_tickets?: number | null
+          name: string
+          period?: string
+          popular?: boolean | null
+          price: number
+        }
+        Update: {
+          created_at?: string
+          features?: Json
+          id?: string
+          max_events?: number | null
+          max_tickets?: number | null
+          name?: string
+          period?: string
+          popular?: boolean | null
+          price?: number
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          id: string
+          plan_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          id?: string
+          plan_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          id?: string
+          plan_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
