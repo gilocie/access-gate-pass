@@ -40,41 +40,59 @@ export type Database = {
       }
       event_tickets: {
         Row: {
+          accommodation_type: string | null
           created_at: string
           event_id: string
           id: string
+          is_active: boolean | null
           is_used: boolean | null
+          meal_options: string[] | null
           pin_code: string
           qr_code: string
           selected_benefits: string[] | null
+          ticket_design_url: string | null
           ticket_holder_email: string
           ticket_holder_name: string
+          ticket_role: string | null
+          transport_included: boolean | null
           updated_at: string
           used_at: string | null
         }
         Insert: {
+          accommodation_type?: string | null
           created_at?: string
           event_id: string
           id?: string
+          is_active?: boolean | null
           is_used?: boolean | null
+          meal_options?: string[] | null
           pin_code: string
           qr_code: string
           selected_benefits?: string[] | null
+          ticket_design_url?: string | null
           ticket_holder_email: string
           ticket_holder_name: string
+          ticket_role?: string | null
+          transport_included?: boolean | null
           updated_at?: string
           used_at?: string | null
         }
         Update: {
+          accommodation_type?: string | null
           created_at?: string
           event_id?: string
           id?: string
+          is_active?: boolean | null
           is_used?: boolean | null
+          meal_options?: string[] | null
           pin_code?: string
           qr_code?: string
           selected_benefits?: string[] | null
+          ticket_design_url?: string | null
           ticket_holder_email?: string
           ticket_holder_name?: string
+          ticket_role?: string | null
+          transport_included?: boolean | null
           updated_at?: string
           used_at?: string | null
         }
@@ -100,7 +118,8 @@ export type Database = {
           location: string | null
           max_attendees: number | null
           organizer_id: string
-          ticket_price: number | null
+          session_types: string[] | null
+          sessions: string[] | null
           title: string
           updated_at: string
         }
@@ -115,7 +134,8 @@ export type Database = {
           location?: string | null
           max_attendees?: number | null
           organizer_id: string
-          ticket_price?: number | null
+          session_types?: string[] | null
+          sessions?: string[] | null
           title: string
           updated_at?: string
         }
@@ -130,7 +150,8 @@ export type Database = {
           location?: string | null
           max_attendees?: number | null
           organizer_id?: string
-          ticket_price?: number | null
+          session_types?: string[] | null
+          sessions?: string[] | null
           title?: string
           updated_at?: string
         }

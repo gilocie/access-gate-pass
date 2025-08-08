@@ -11,7 +11,10 @@ import {
   Settings,
   MapPin,
   Clock,
-  DollarSign
+  CheckCircle,
+  Scan,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,9 +30,10 @@ interface Event {
   event_end_date: string;
   location: string;
   max_attendees: number;
-  ticket_price: number;
   company_name: string;
   available_benefits: string[];
+  sessions: string[];
+  session_types: string[];
   created_at: string;
 }
 
@@ -41,7 +45,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState({
     totalEvents: 0,
     totalTickets: 0,
-    totalRevenue: 0
+    usedTickets: 0
   });
 
   useEffect(() => {
@@ -84,18 +88,18 @@ const Dashboard = () => {
         .select('*', { count: 'exact', head: true })
         .eq('organizer_id', user.id);
 
-      // Get total tickets and revenue
+      // Get total tickets and used tickets
       const { data: ticketsData } = await supabase
         .from('event_tickets')
-        .select('event_id')
+        .select('event_id, is_used')
         .in('event_id', events.map(e => e.id));
 
-      const totalRevenue = events.reduce((sum, event) => sum + (event.ticket_price * (ticketsData?.filter(t => t.event_id === event.id).length || 0)), 0);
+      const usedTicketsCount = ticketsData?.filter(t => t.is_used).length || 0;
 
       setStats({
         totalEvents: eventCount || 0,
         totalTickets: ticketsData?.length || 0,
-        totalRevenue
+        usedTickets: usedTicketsCount
       });
     } catch (error: any) {
       console.error('Error fetching stats:', error);
@@ -177,13 +181,13 @@ const Dashboard = () => {
             
             <Card className="glass">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Used Tickets</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
+                <div className="text-2xl font-bold">{stats.usedTickets}</div>
                 <p className="text-xs text-muted-foreground">
-                  Revenue generated
+                  Tickets checked in
                 </p>
               </CardContent>
             </Card>
@@ -250,8 +254,8 @@ const Dashboard = () => {
                               )}
                               
                               <div className="flex items-center">
-                                <DollarSign className="w-4 h-4 mr-2" />
-                                ${event.ticket_price.toFixed(2)}
+                                <Calendar className="w-4 h-4 mr-2" />
+                                {event.sessions.length > 0 ? `${event.sessions.length} sessions` : 'No sessions'}
                               </div>
                             </div>
                             
@@ -276,12 +280,16 @@ const Dashboard = () => {
                           
                           <div className="flex gap-2 mt-4 md:mt-0">
                             <Button variant="outline" size="sm">
-                              <Settings className="w-4 h-4 mr-2" />
-                              Manage
+                              <Scan className="w-4 h-4 mr-2" />
+                              Scan QR
                             </Button>
                             <Button variant="outline" size="sm">
-                              <BarChart3 className="w-4 h-4 mr-2" />
-                              Analytics
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
                             </Button>
                           </div>
                         </div>

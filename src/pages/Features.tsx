@@ -151,11 +151,11 @@ const Features = () => {
                 secure, professional, and efficient event management solutions.
               </p>
               
-              <div className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 {benefits.map((benefit, index) => (
                   <div key={index} className="flex items-start space-x-3">
                     <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                    <span className="text-foreground">{benefit}</span>
+                    <span className="text-foreground text-sm">{benefit}</span>
                   </div>
                 ))}
               </div>

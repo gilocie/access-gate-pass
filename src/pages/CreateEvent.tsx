@@ -1,46 +1,82 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CalendarIcon, Plus, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Calendar, 
+  MapPin, 
+  Users, 
+  ArrowLeft, 
+  Plus,
+  X
+} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 
-interface EventBenefit {
+interface Benefit {
   id: string;
   name: string;
-  category: string;
   description: string;
+  category: string;
 }
 
 const CreateEvent = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [benefits, setBenefits] = useState<EventBenefit[]>([]);
-  const [selectedBenefits, setSelectedBenefits] = useState<string[]>([]);
-  const [formData, setFormData] = useState({
+  const [benefits, setBenefits] = useState<Benefit[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [customBenefit, setCustomBenefit] = useState('');
+  
+  const [eventData, setEventData] = useState({
     title: '',
     description: '',
-    eventDate: '',
-    eventEndDate: '',
+    event_date: '',
+    event_end_date: '',
     location: '',
-    maxAttendees: '',
-    ticketPrice: '',
-    companyName: ''
+    max_attendees: '',
+    available_benefits: [] as string[],
+    sessions: [] as string[],
+    session_types: [] as string[]
   });
 
+  const sessionOptions = ['Morning Session', 'Afternoon Session', 'Evening Session', 'Night Session'];
+  const sessionTypeOptions = ['Training', 'Watching', 'Playing', 'Panel Discussion', 'Workshop', 'Performance'];
+
   useEffect(() => {
-    fetchBenefits();
-  }, []);
+    if (user) {
+      fetchBenefits();
+      fetchUserProfile();
+    }
+  }, [user]);
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('company_name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      
+      setUserProfile(data);
+    } catch (error: any) {
+      console.error('Error fetching profile:', error);
+    }
+  };
 
   const fetchBenefits = async () => {
     try {
@@ -61,24 +97,50 @@ const CreateEvent = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({
+    setEventData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
     }));
   };
 
   const handleBenefitToggle = (benefitName: string) => {
-    setSelectedBenefits(prev => 
-      prev.includes(benefitName)
-        ? prev.filter(b => b !== benefitName)
-        : [...prev, benefitName]
-    );
+    setEventData(prev => ({
+      ...prev,
+      available_benefits: prev.available_benefits.includes(benefitName)
+        ? prev.available_benefits.filter(b => b !== benefitName)
+        : [...prev.available_benefits, benefitName]
+    }));
+  };
+
+  const handleSessionToggle = (session: string) => {
+    setEventData(prev => ({
+      ...prev,
+      sessions: prev.sessions.includes(session)
+        ? prev.sessions.filter(s => s !== session)
+        : [...prev.sessions, session]
+    }));
+  };
+
+  const handleSessionTypeToggle = (sessionType: string) => {
+    setEventData(prev => ({
+      ...prev,
+      session_types: prev.session_types.includes(sessionType)
+        ? prev.session_types.filter(st => st !== sessionType)
+        : [...prev.session_types, sessionType]
+    }));
+  };
+
+  const addCustomBenefit = () => {
+    if (customBenefit.trim()) {
+      handleBenefitToggle(customBenefit.trim());
+      setCustomBenefit('');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    
+
     setIsLoading(true);
     
     try {
@@ -86,22 +148,23 @@ const CreateEvent = () => {
         .from('events')
         .insert({
           organizer_id: user.id,
-          title: formData.title,
-          description: formData.description,
-          event_date: formData.eventDate,
-          event_end_date: formData.eventEndDate || null,
-          location: formData.location,
-          max_attendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : null,
-          ticket_price: formData.ticketPrice ? parseFloat(formData.ticketPrice) : 0,
-          company_name: formData.companyName,
-          available_benefits: selectedBenefits
+          title: eventData.title,
+          description: eventData.description,
+          event_date: eventData.event_date,
+          event_end_date: eventData.event_end_date || null,
+          location: eventData.location,
+          max_attendees: eventData.max_attendees ? parseInt(eventData.max_attendees) : null,
+          available_benefits: eventData.available_benefits,
+          sessions: eventData.sessions,
+          session_types: eventData.session_types,
+          company_name: userProfile?.company_name || null
         });
       
       if (error) throw error;
       
       toast({
         title: "Event created successfully!",
-        description: "Your event has been created and is ready for attendees."
+        description: "Your event has been created and is ready for ticket generation."
       });
       
       navigate('/dashboard');
@@ -116,13 +179,13 @@ const CreateEvent = () => {
     }
   };
 
-  const benefitsByCategory = benefits.reduce((acc, benefit) => {
+  const groupedBenefits = benefits.reduce((acc, benefit) => {
     if (!acc[benefit.category]) {
       acc[benefit.category] = [];
     }
     acc[benefit.category].push(benefit);
     return acc;
-  }, {} as Record<string, EventBenefit[]>);
+  }, {} as Record<string, Benefit[]>);
 
   return (
     <div className="min-h-screen bg-background">
@@ -140,151 +203,216 @@ const CreateEvent = () => {
           <Card className="glass">
             <CardHeader>
               <CardTitle className="text-2xl flex items-center">
-                <Plus className="w-6 h-6 mr-2" />
+                <Calendar className="w-6 h-6 mr-2" />
                 Create New Event
               </CardTitle>
               <CardDescription>
-                Set up your event details and select available benefits for attendees
+                Set up your event details and configure available benefits for attendees
               </CardDescription>
             </CardHeader>
             
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Event Title *</Label>
-                    <Input
-                      id="title"
-                      name="title"
-                      placeholder="Enter event title"
-                      value={formData.title}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName">Company Name</Label>
-                    <Input
-                      id="companyName"
-                      name="companyName"
-                      placeholder="Enter company name"
-                      value={formData.companyName}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    placeholder="Describe your event"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="eventDate">Start Date & Time *</Label>
-                    <Input
-                      id="eventDate"
-                      name="eventDate"
-                      type="datetime-local"
-                      value={formData.eventDate}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="eventEndDate">End Date & Time</Label>
-                    <Input
-                      id="eventEndDate"
-                      name="eventEndDate"
-                      type="datetime-local"
-                      value={formData.eventEndDate}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    placeholder="Enter event location"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="maxAttendees">Maximum Attendees</Label>
-                    <Input
-                      id="maxAttendees"
-                      name="maxAttendees"
-                      type="number"
-                      placeholder="Enter max attendees"
-                      value={formData.maxAttendees}
-                      onChange={handleInputChange}
-                      min="1"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="ticketPrice">Ticket Price ($)</Label>
-                    <Input
-                      id="ticketPrice"
-                      name="ticketPrice"
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={formData.ticketPrice}
-                      onChange={handleInputChange}
-                      min="0"
-                    />
-                  </div>
-                </div>
-                
+                {/* Basic Event Information */}
                 <div className="space-y-4">
-                  <Label className="text-base font-semibold">Available Benefits</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Select the benefits that will be available to attendees
-                  </p>
+                  <h3 className="text-lg font-semibold">Event Details</h3>
                   
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {Object.entries(benefitsByCategory).map(([category, categoryBenefits]) => (
-                      <Card key={category} className="p-4">
-                        <h4 className="font-semibold mb-3 text-primary">{category}</h4>
-                        <div className="space-y-2">
-                          {categoryBenefits.map((benefit) => (
-                            <div key={benefit.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={benefit.id}
-                                checked={selectedBenefits.includes(benefit.name)}
-                                onCheckedChange={() => handleBenefitToggle(benefit.name)}
-                              />
-                              <Label 
-                                htmlFor={benefit.id} 
-                                className="text-sm cursor-pointer"
-                                title={benefit.description}
-                              >
-                                {benefit.name}
-                              </Label>
-                            </div>
-                          ))}
-                        </div>
-                      </Card>
-                    ))}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Event Name *</Label>
+                      <Input
+                        id="title"
+                        name="title"
+                        placeholder="Enter event name"
+                        value={eventData.title}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Location</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="location"
+                          name="location"
+                          placeholder="Event location"
+                          value={eventData.location}
+                          onChange={handleInputChange}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      placeholder="Describe your event"
+                      value={eventData.description}
+                      onChange={handleInputChange}
+                      rows={3}
+                    />
+                  </div>
+                  
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="event_date">Start Date & Time *</Label>
+                      <Input
+                        id="event_date"
+                        name="event_date"
+                        type="datetime-local"
+                        value={eventData.event_date}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="event_end_date">End Date & Time</Label>
+                      <Input
+                        id="event_end_date"
+                        name="event_end_date"
+                        type="datetime-local"
+                        value={eventData.event_end_date}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="max_attendees">Max Attendees</Label>
+                      <div className="relative">
+                        <Users className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="max_attendees"
+                          name="max_attendees"
+                          type="number"
+                          placeholder="Optional"
+                          value={eventData.max_attendees}
+                          onChange={handleInputChange}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-                
+
+                {/* Sessions */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Sessions</h3>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <Label className="text-sm font-medium mb-3 block">Session Times</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {sessionOptions.map((session) => (
+                          <div key={session} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`session-${session}`}
+                              checked={eventData.sessions.includes(session)}
+                              onCheckedChange={() => handleSessionToggle(session)}
+                            />
+                            <Label htmlFor={`session-${session}`} className="text-sm">
+                              {session}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-medium mb-3 block">Session Types</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {sessionTypeOptions.map((sessionType) => (
+                          <div key={sessionType} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`sessiontype-${sessionType}`}
+                              checked={eventData.session_types.includes(sessionType)}
+                              onCheckedChange={() => handleSessionTypeToggle(sessionType)}
+                            />
+                            <Label htmlFor={`sessiontype-${sessionType}`} className="text-sm">
+                              {sessionType}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Benefits */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Available Benefits</h3>
+                  
+                  {Object.entries(groupedBenefits).map(([category, categoryBenefits]) => (
+                    <div key={category} className="space-y-3">
+                      <h4 className="font-medium text-sm uppercase text-muted-foreground">
+                        {category.replace('_', ' ')}
+                      </h4>
+                      <div className="grid md:grid-cols-3 gap-2">
+                        {categoryBenefits.map((benefit) => (
+                          <div key={benefit.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={benefit.id}
+                              checked={eventData.available_benefits.includes(benefit.name)}
+                              onCheckedChange={() => handleBenefitToggle(benefit.name)}
+                            />
+                            <Label htmlFor={benefit.id} className="text-sm">
+                              {benefit.name}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Custom Benefits */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm uppercase text-muted-foreground">Custom Benefits</h4>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add custom benefit"
+                        value={customBenefit}
+                        onChange={(e) => setCustomBenefit(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addCustomBenefit();
+                          }
+                        }}
+                      />
+                      <Button type="button" onClick={addCustomBenefit} size="sm">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    {eventData.available_benefits.filter(benefit => 
+                      !benefits.some(b => b.name === benefit)
+                    ).length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {eventData.available_benefits
+                          .filter(benefit => !benefits.some(b => b.name === benefit))
+                          .map((benefit) => (
+                            <Badge key={benefit} variant="secondary" className="text-xs">
+                              {benefit}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="ml-1 h-4 w-4 p-0"
+                                onClick={() => handleBenefitToggle(benefit)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </Badge>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex gap-4 pt-6">
                   <Button 
                     type="submit" 
@@ -293,12 +421,8 @@ const CreateEvent = () => {
                   >
                     {isLoading ? "Creating Event..." : "Create Event"}
                   </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => navigate('/dashboard')}
-                  >
-                    Cancel
+                  <Button type="button" variant="outline" asChild>
+                    <Link to="/dashboard">Cancel</Link>
                   </Button>
                 </div>
               </form>
