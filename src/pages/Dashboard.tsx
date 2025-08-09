@@ -21,6 +21,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
+import QRScanner from '@/components/QRScanner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface Event {
   id: string;
@@ -42,6 +44,8 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [stats, setStats] = useState({
     totalEvents: 0,
     totalTickets: 0,
@@ -114,6 +118,54 @@ const Dashboard = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const calculateRemainingDays = (eventDate: string) => {
+    const now = new Date();
+    const event = new Date(eventDate);
+    const diffTime = event.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      // First delete all tickets for this event
+      const { error: ticketsError } = await supabase
+        .from('event_tickets')
+        .delete()
+        .eq('event_id', eventId);
+
+      if (ticketsError) throw ticketsError;
+
+      // Then delete the event
+      const { error: eventError } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId)
+        .eq('organizer_id', user?.id);
+
+      if (eventError) throw eventError;
+
+      toast({
+        title: "Event deleted successfully",
+        description: "The event and all associated tickets have been removed."
+      });
+
+      fetchEvents();
+      fetchStats();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error deleting event",
+        description: error.message
+      });
+    }
+  };
+
+  const handleScanQR = (eventId: string) => {
+    setSelectedEventId(eventId);
+    setShowQRScanner(true);
   };
 
   if (loading) {
@@ -255,7 +307,10 @@ const Dashboard = () => {
                               
                               <div className="flex items-center">
                                 <Calendar className="w-4 h-4 mr-2" />
-                                {event.sessions.length > 0 ? `${event.sessions.length} sessions` : 'No sessions'}
+                                {calculateRemainingDays(event.event_date) > 0 ? 
+                                  `${calculateRemainingDays(event.event_date)} days remaining` : 
+                                  'Event ended'
+                                }
                               </div>
                             </div>
                             
@@ -279,18 +334,42 @@ const Dashboard = () => {
                           </div>
                           
                           <div className="flex gap-2 mt-4 md:mt-0">
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleScanQR(event.id)}
+                            >
                               <Scan className="w-4 h-4 mr-2" />
                               Scan QR
                             </Button>
-                            <Button variant="outline" size="sm">
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to={`/edit-event/${event.id}`}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </Link>
                             </Button>
-                            <Button variant="outline" size="sm">
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Event</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{event.title}"? This will permanently remove the event and all associated tickets. This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteEvent(event.id)}>
+                                    Delete Event
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       </CardContent>
@@ -302,6 +381,15 @@ const Dashboard = () => {
           </Card>
         </div>
       </div>
+
+      {/* QR Scanner Dialog */}
+      {showQRScanner && (
+        <QRScanner
+          isOpen={showQRScanner}
+          onClose={() => setShowQRScanner(false)}
+          eventId={selectedEventId}
+        />
+      )}
     </div>
   );
 };

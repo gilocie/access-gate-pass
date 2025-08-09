@@ -141,15 +141,18 @@ const Features = () => {
       {/* Benefits Section */}
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Why Choose GoPass?
+            </h2>
+            <p className="text-muted-foreground text-lg mb-8 max-w-3xl mx-auto">
+              Join thousands of event organizers who trust GoPass to deliver 
+              secure, professional, and efficient event management solutions.
+            </p>
+          </div>
+          
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                Why Choose GoPass?
-              </h2>
-              <p className="text-muted-foreground text-lg mb-8">
-                Join thousands of event organizers who trust GoPass to deliver 
-                secure, professional, and efficient event management solutions.
-              </p>
               
               <div className="grid md:grid-cols-2 gap-4">
                 {benefits.map((benefit, index) => (
