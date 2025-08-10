@@ -443,7 +443,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
                   <SelectValue placeholder="Select accommodation" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No accommodation</SelectItem>
+                  <SelectItem value="none">No accommodation</SelectItem>
                   {accommodationOptions.map((acc) => (
                     <SelectItem key={acc} value={acc.toLowerCase()}>{acc}</SelectItem>
                   ))}
