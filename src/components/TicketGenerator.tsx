@@ -12,6 +12,7 @@ import { ArrowLeft, Upload, Download, Send, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import QRCode from 'qrcode';
+import TicketTemplateSelector from './TicketTemplateSelector';
 
 interface Event {
   id: string;
@@ -20,6 +21,7 @@ interface Event {
   event_end_date: string;
   location: string;
   available_benefits: string[];
+  sessions?: string[];
 }
 
 interface TicketGeneratorProps {
@@ -42,11 +44,12 @@ interface TicketFormData {
 const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, event }) => {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0); // Start with template selection
   const [isGenerating, setIsGenerating] = useState(false);
   const [qrCodeDataURL, setQrCodeDataURL] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [ticketPreview, setTicketPreview] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   
   const [formData, setFormData] = useState<TicketFormData>({
     participantName: '',
@@ -73,7 +76,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
   ];
 
   useEffect(() => {
-    if (currentStep === 2) {
+    if (currentStep === 3) {
       generatePinAndQR();
     }
   }, [currentStep, formData]);
@@ -117,22 +120,28 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
     canvas.width = 800;
     canvas.height = 400;
 
+    // Use template colors if available
+    const primaryColor = selectedTemplate?.customizations?.primaryColor || '#4F46E5';
+    const secondaryColor = selectedTemplate?.customizations?.secondaryColor || '#7C3AED';
+    const accentColor = selectedTemplate?.customizations?.accentColor || '#FFD700';
+    const fontFamily = selectedTemplate?.customizations?.fontFamily || 'Arial';
+
     // Background
     const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, '#4F46E5');
-    gradient.addColorStop(1, '#7C3AED');
+    gradient.addColorStop(0, primaryColor);
+    gradient.addColorStop(1, secondaryColor);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Event name
-    ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 32px Arial';
+    ctx.fillStyle = accentColor;
+    ctx.font = `bold 32px ${fontFamily}`;
     ctx.textAlign = 'left';
     ctx.fillText(event.title.toUpperCase(), 50, 60);
 
     // Participant name
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = '24px Arial';
+    ctx.font = `24px ${fontFamily}`;
     ctx.fillText(formData.participantName.toUpperCase(), 50, 120);
 
     // Dates
@@ -200,13 +209,14 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
     ctx.fillStyle = '#FFFFFF';
     ctx.fillText(`${Math.max(0, remainingDays)} Days`, 340, 260);
 
-    // QR Code
+    // QR Code positioned on right side in square box
     if (qrCodeURL) {
       const qrImg = new Image();
       qrImg.onload = () => {
-        // QR code background
+        // QR code background - square box on right side
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(620, 50, 150, 150);
+        // QR code positioned in center of the square
         ctx.drawImage(qrImg, 630, 60, 130, 130);
       };
       qrImg.src = qrCodeURL;
@@ -250,7 +260,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
       });
       return;
     }
-    setCurrentStep(2);
+    setCurrentStep(3);
   };
 
   const generateTicket = async () => {
@@ -289,7 +299,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
         description: "The ticket has been created and is ready for download."
       });
 
-      setCurrentStep(3);
+      setCurrentStep(4);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -319,7 +329,8 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
   };
 
   const reset = () => {
-    setCurrentStep(1);
+    setCurrentStep(0);
+    setSelectedTemplate(null);
     setFormData({
       participantName: '',
       email: '',
@@ -335,12 +346,17 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
     setTicketPreview('');
   };
 
+  const handleTemplateSelect = (template: any) => {
+    setSelectedTemplate(template);
+    setCurrentStep(1);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center">
-            {currentStep > 1 && (
+            {currentStep > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -353,13 +369,22 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
             Add Participant - {event.title}
           </DialogTitle>
           <DialogDescription>
-            Step {currentStep} of 3: {
+            Step {currentStep + 1} of 4: {
+              currentStep === 0 ? 'Select Template' :
               currentStep === 1 ? 'Ticket Details' : 
               currentStep === 2 ? 'Preview & Generate' : 
               'Download & Share'
             }
           </DialogDescription>
         </DialogHeader>
+
+        {currentStep === 0 && (
+          <TicketTemplateSelector
+            onTemplateSelect={handleTemplateSelect}
+            onBack={onClose}
+            eventCategory={event.sessions?.[0] || ''}
+          />
+        )}
 
         {currentStep === 1 && (
           <div className="space-y-6">

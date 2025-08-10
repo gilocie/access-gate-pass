@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import QRScanner from '@/components/QRScanner';
+import TicketGenerator from '@/components/TicketGenerator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface Event {
@@ -46,11 +47,17 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [stats, setStats] = useState({
     totalEvents: 0,
     totalTickets: 0,
     usedTickets: 0
   });
+  const [selectedEventStats, setSelectedEventStats] = useState({
+    totalTickets: 0,
+    usedTickets: 0
+  });
+  const [showTicketGenerator, setShowTicketGenerator] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -107,6 +114,24 @@ const Dashboard = () => {
       });
     } catch (error: any) {
       console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchEventStats = async (eventId: string) => {
+    try {
+      const { data: ticketsData } = await supabase
+        .from('event_tickets')
+        .select('is_used')
+        .eq('event_id', eventId);
+
+      const usedTicketsCount = ticketsData?.filter(t => t.is_used).length || 0;
+
+      setSelectedEventStats({
+        totalTickets: ticketsData?.length || 0,
+        usedTickets: usedTicketsCount
+      });
+    } catch (error: any) {
+      console.error('Error fetching event stats:', error);
     }
   };
 
@@ -168,6 +193,17 @@ const Dashboard = () => {
     setShowQRScanner(true);
   };
 
+  const handleEventSelect = (event: Event) => {
+    setSelectedEvent(event);
+    fetchEventStats(event.id);
+  };
+
+  const handleAddParticipant = () => {
+    if (selectedEvent) {
+      setShowTicketGenerator(true);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -220,13 +256,17 @@ const Dashboard = () => {
             
             <Card className="glass">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Tickets</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  {selectedEvent ? `${selectedEvent.title} - Total Tickets` : 'Total Tickets'}
+                </CardTitle>
                 <Ticket className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalTickets}</div>
+                <div className="text-2xl font-bold">
+                  {selectedEvent ? selectedEventStats.totalTickets : stats.totalTickets}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Tickets sold
+                  {selectedEvent ? 'Created for this event' : 'Tickets created'}
                 </p>
               </CardContent>
             </Card>
@@ -237,7 +277,9 @@ const Dashboard = () => {
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.usedTickets}</div>
+                <div className="text-2xl font-bold">
+                  {selectedEvent ? selectedEventStats.usedTickets : stats.usedTickets}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Tickets checked in
                 </p>
@@ -274,18 +316,34 @@ const Dashboard = () => {
               ) : (
                 <div className="grid gap-4">
                   {events.map((event) => (
-                    <Card key={event.id} className="hover:shadow-md transition-shadow">
+                    <Card 
+                      key={event.id} 
+                      className={`cursor-pointer transition-all hover:shadow-lg ${
+                        selectedEvent?.id === event.id 
+                          ? 'bg-gradient-primary text-white ring-2 ring-primary-dark' 
+                          : 'hover:shadow-md'
+                      }`}
+                      onClick={() => handleEventSelect(event)}
+                    >
                       <CardContent className="p-6">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                           <div className="flex-1">
                             <div className="flex items-center mb-2">
-                              <h3 className="text-lg font-semibold mr-3">{event.title}</h3>
+                              <h3 className={`text-lg font-semibold mr-3 ${
+                                selectedEvent?.id === event.id ? 'text-white' : ''
+                              }`}>
+                                {event.title}
+                              </h3>
                               {event.company_name && (
-                                <Badge variant="outline">{event.company_name}</Badge>
+                                <Badge variant={selectedEvent?.id === event.id ? "secondary" : "outline"}>
+                                  {event.company_name}
+                                </Badge>
                               )}
                             </div>
                             
-                            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-muted-foreground">
+                            <div className={`grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm ${
+                              selectedEvent?.id === event.id ? 'text-white/80' : 'text-muted-foreground'
+                            }`}>
                               <div className="flex items-center">
                                 <Clock className="w-4 h-4 mr-2" />
                                 {formatDate(event.event_date)}
@@ -313,44 +371,53 @@ const Dashboard = () => {
                                 }
                               </div>
                             </div>
-                            
-                            {event.available_benefits.length > 0 && (
-                              <div className="mt-3">
-                                <p className="text-sm font-medium mb-2">Available Benefits:</p>
-                                <div className="flex flex-wrap gap-1">
-                                  {event.available_benefits.slice(0, 3).map((benefit, index) => (
-                                    <Badge key={index} variant="secondary" className="text-xs">
-                                      {benefit}
-                                    </Badge>
-                                  ))}
-                                  {event.available_benefits.length > 3 && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      +{event.available_benefits.length - 3} more
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            )}
                           </div>
                           
                           <div className="flex gap-2 mt-4 md:mt-0">
+                            {selectedEvent?.id === event.id && (
+                              <Button 
+                                variant="secondary" 
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddParticipant();
+                                }}
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Add Participant
+                              </Button>
+                            )}
                             <Button 
-                              variant="outline" 
+                              variant={selectedEvent?.id === event.id ? "secondary" : "outline"}
                               size="sm"
-                              onClick={() => handleScanQR(event.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleScanQR(event.id);
+                              }}
                             >
                               <Scan className="w-4 h-4 mr-2" />
                               Scan QR
                             </Button>
-                            <Button variant="outline" size="sm" asChild>
-                              <Link to={`/edit-event/${event.id}`}>
+                            <Button 
+                              variant={selectedEvent?.id === event.id ? "secondary" : "outline"}
+                              size="sm" 
+                              asChild
+                            >
+                              <Link 
+                                to={`/edit-event/${event.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
                               </Link>
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm">
+                                <Button 
+                                  variant={selectedEvent?.id === event.id ? "secondary" : "outline"}
+                                  size="sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   <Trash2 className="w-4 h-4 mr-2" />
                                   Delete
                                 </Button>
@@ -388,6 +455,19 @@ const Dashboard = () => {
           isOpen={showQRScanner}
           onClose={() => setShowQRScanner(false)}
           eventId={selectedEventId}
+        />
+      )}
+
+      {/* Ticket Generator Dialog */}
+      {showTicketGenerator && selectedEvent && (
+        <TicketGenerator
+          isOpen={showTicketGenerator}
+          onClose={() => {
+            setShowTicketGenerator(false);
+            fetchEventStats(selectedEvent.id);
+            fetchStats();
+          }}
+          event={selectedEvent}
         />
       )}
     </div>
