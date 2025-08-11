@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      custom_ticket_templates: {
+        Row: {
+          background_color: string | null
+          background_image_url: string | null
+          canvas_height: number
+          canvas_width: number
+          category: string
+          created_at: string
+          creator_id: string
+          elements: Json
+          id: string
+          is_public: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          background_color?: string | null
+          background_image_url?: string | null
+          canvas_height?: number
+          canvas_width?: number
+          category: string
+          created_at?: string
+          creator_id: string
+          elements?: Json
+          id?: string
+          is_public?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          background_color?: string | null
+          background_image_url?: string | null
+          canvas_height?: number
+          canvas_width?: number
+          category?: string
+          created_at?: string
+          creator_id?: string
+          elements?: Json
+          id?: string
+          is_public?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       event_benefits: {
         Row: {
           category: string

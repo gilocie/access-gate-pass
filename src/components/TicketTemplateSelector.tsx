@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, Palette, Type, Image as ImageIcon } from 'lucide-react';
+import { Upload, Palette, Type, Image as ImageIcon, Plus } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import TicketDesignerModal from './TicketDesignerModal';
 
 interface TemplateConfig {
   id: string;
@@ -89,6 +91,8 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
   eventCategory = ''
 }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateConfig | null>(null);
+  const [customTemplates, setCustomTemplates] = useState<any[]>([]);
+  const [showDesigner, setShowDesigner] = useState(false);
   const [customizations, setCustomizations] = useState({
     logo: null as File | null,
     primaryColor: '#1e40af',
@@ -99,6 +103,25 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
     backgroundOpacity: 0.3
   });
 
+  useEffect(() => {
+    loadCustomTemplates();
+  }, []);
+
+  const loadCustomTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('custom_ticket_templates')
+        .select('*')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setCustomTemplates(data || []);
+    } catch (error) {
+      console.error('Error loading custom templates:', error);
+    }
+  };
+
   const handleTemplateClick = (template: TemplateConfig) => {
     setSelectedTemplate(template);
     setCustomizations(prev => ({
@@ -107,6 +130,26 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
       secondaryColor: template.colors.secondary,
       accentColor: template.colors.accent
     }));
+  };
+
+  const handleCustomTemplateClick = (template: any) => {
+    onTemplateSelect({
+      id: template.id,
+      name: template.name,
+      category: template.category,
+      preview: '',
+      colors: { primary: '#1e293b', secondary: '#3b82f6', accent: '#fbbf24' },
+      customizations: {
+        elements: template.elements,
+        canvasSize: { width: template.canvas_width, height: template.canvas_height },
+        backgroundColor: template.background_color,
+        backgroundImage: template.background_image_url
+      }
+    });
+  };
+
+  const handleTemplateCreated = (template: any) => {
+    loadCustomTemplates(); // Reload templates after creation
   };
 
   const handleFileUpload = (type: 'logo' | 'backgroundImage', file: File | null) => {
@@ -132,12 +175,101 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
       <div className="text-center">
         <h3 className="text-xl font-semibold mb-2">Choose Ticket Template</h3>
         <p className="text-muted-foreground">
-          Select a template that matches your event style
+          Select a template or create your own custom design
         </p>
+        <Button 
+          onClick={() => setShowDesigner(true)}
+          className="mt-4 bg-gradient-primary hover:opacity-90"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Create Custom Template
+        </Button>
       </div>
 
-      {/* Template Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
+      {/* Custom Templates */}
+      {customTemplates.length > 0 && (
+        <div className="space-y-4">
+          <h4 className="text-lg font-medium">Custom Templates</h4>
+          <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
+            {customTemplates.map((template) => (
+              <Card 
+                key={template.id} 
+                className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
+                onClick={() => handleCustomTemplateClick(template)}
+              >
+                <CardContent className="p-3">
+                  <div 
+                    className="relative overflow-hidden rounded-lg mb-3 mx-auto border"
+                    style={{ 
+                      width: '605px', 
+                      height: '151px',
+                      backgroundColor: template.background_color || '#1e293b',
+                      backgroundImage: template.background_image_url ? `url(${template.background_image_url})` : undefined,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center'
+                    }}
+                  >
+                    {template.elements.map((element: any, index: number) => (
+                      <div
+                        key={index}
+                        style={{
+                          position: 'absolute',
+                          left: element.x,
+                          top: element.y,
+                          width: element.width,
+                          height: element.height,
+                          fontSize: `${(element.fontSize || 16) * 0.8}px`,
+                          fontFamily: element.fontFamily,
+                          color: element.color,
+                          backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
+                          borderRadius: element.borderRadius,
+                          textAlign: element.textAlign,
+                          fontWeight: element.fontWeight,
+                          transform: `rotate(${element.rotation || 0}deg)`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: element.textAlign === 'center' ? 'center' : element.textAlign === 'right' ? 'flex-end' : 'flex-start',
+                          padding: '2px'
+                        }}
+                      >
+                        {element.type === 'qr-code' ? (
+                          <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
+                            <div className="w-full h-full grid grid-cols-6 gap-px">
+                              {[...Array(36)].map((_, i) => (
+                                <div 
+                                  key={i} 
+                                  className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ) : element.type === 'logo' ? (
+                          <div className="w-full h-full bg-white/90 rounded flex items-center justify-center">
+                            {element.imageUrl ? (
+                              <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                            ) : (
+                              <div className="text-xs font-bold text-gray-700">LOGO</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span>{element.content}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <h4 className="font-medium text-sm">{template.name}</h4>
+                  <p className="text-xs text-muted-foreground capitalize">{template.category}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Built-in Template Grid */}
+      <div className="space-y-4">
+        <h4 className="text-lg font-medium">Built-in Templates</h4>
+        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
         {filteredTemplates.map((template) => (
           <Card 
             key={template.id} 
@@ -263,6 +395,7 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
             </CardContent>
           </Card>
         ))}
+        </div>
       </div>
 
       {/* Customization Panel */}
@@ -556,6 +689,12 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
           Continue to Details
         </Button>
       </div>
+
+      <TicketDesignerModal
+        isOpen={showDesigner}
+        onClose={() => setShowDesigner(false)}
+        onTemplateCreated={handleTemplateCreated}
+      />
     </div>
   );
 };

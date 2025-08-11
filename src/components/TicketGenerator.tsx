@@ -79,7 +79,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
     if (currentStep === 2) {
       generatePinAndQR();
     }
-  }, [currentStep, formData]);
+  }, [currentStep, formData, selectedTemplate]);
 
   const generatePinAndQR = async () => {
     // Ensure 6-digit code is unique per event
@@ -117,7 +117,16 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
         errorCorrectionLevel: 'M'
       });
       setQrCodeDataURL(qrCodeURL);
-      generateTicketPreview(qrCodeURL, uniquePin);
+      
+      // Generate preview based on template type
+      if (selectedTemplate?.customizations?.elements) {
+        // Custom template
+        const preview = await generateTicketFromCustomTemplate(selectedTemplate, formData, uniquePin);
+        setTicketPreview(preview);
+      } else {
+        // Built-in template
+        generateTicketPreview(qrCodeURL, uniquePin);
+      }
     } catch (error) {
       console.error('Error generating QR code:', error);
     }
@@ -408,6 +417,113 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
   const handleTemplateSelect = (template: any) => {
     setSelectedTemplate(template);
     setCurrentStep(1);
+  };
+
+  const generateTicketFromCustomTemplate = async (customTemplate: any, formData: any, pinCode: string) => {
+    if (!canvasRef.current) return '';
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    const { canvasSize, elements, backgroundColor, backgroundImage } = customTemplate.customizations;
+    
+    // Set canvas size
+    canvas.width = canvasSize.width;
+    canvas.height = canvasSize.height;
+
+    // Background
+    if (backgroundImage) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise((resolve) => {
+        img.onload = resolve;
+        img.src = backgroundImage;
+      });
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    } else if (backgroundColor) {
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Generate QR code
+    const qrData = `${window.location.origin}/ticket-view?pinCode=${pinCode}&eventId=${event.id}`;
+    const qrCodeURL = await QRCode.toDataURL(qrData, {
+      width: 300,
+      margin: 1,
+      color: { dark: '#000000', light: '#FFFFFF' },
+      errorCorrectionLevel: 'M'
+    });
+
+    // Render elements
+    for (const element of elements) {
+      ctx.save();
+      
+      // Apply transformations
+      const centerX = element.x + element.width / 2;
+      const centerY = element.y + element.height / 2;
+      ctx.translate(centerX, centerY);
+      ctx.rotate((element.rotation || 0) * Math.PI / 180);
+      ctx.translate(-centerX, -centerY);
+
+      if (element.type === 'qr-code') {
+        const qrImg = new Image();
+        await new Promise((resolve) => {
+          qrImg.onload = resolve;
+          qrImg.src = qrCodeURL;
+        });
+        
+        if (element.backgroundColor && element.backgroundColor !== 'transparent') {
+          ctx.fillStyle = element.backgroundColor;
+          ctx.fillRect(element.x, element.y, element.width, element.height);
+        }
+        
+        ctx.drawImage(qrImg, element.x + 4, element.y + 4, element.width - 8, element.height - 8);
+      } else if (element.type === 'logo' && element.imageUrl) {
+        const logoImg = new Image();
+        await new Promise((resolve) => {
+          logoImg.onload = resolve;
+          logoImg.src = element.imageUrl;
+        });
+        ctx.drawImage(logoImg, element.x, element.y, element.width, element.height);
+      } else {
+        // Text elements
+        if (element.backgroundColor && element.backgroundColor !== 'transparent') {
+          ctx.fillStyle = element.backgroundColor;
+          ctx.fillRect(element.x, element.y, element.width, element.height);
+        }
+
+        ctx.fillStyle = element.color || '#FFFFFF';
+        ctx.font = `${element.fontWeight || 'normal'} ${element.fontSize || 16}px ${element.fontFamily || 'Arial'}`;
+        ctx.textAlign = element.textAlign || 'left';
+        ctx.textBaseline = 'middle';
+
+        let content = element.content || '';
+        
+        // Dynamic content replacement
+        if (element.type === 'event-name') content = event.title;
+        else if (element.type === 'user-name') content = formData.participantName;
+        else if (element.type === 'pin-code') content = pinCode;
+        else if (element.type === 'status') content = 'VALID';
+        else if (element.type === 'benefits') content = `0/${formData.selectedBenefits.length}`;
+        else if (element.type === 'remaining-days') {
+          const endDate = event.event_end_date ? new Date(event.event_end_date) : new Date(event.event_date);
+          const remainingDays = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          content = `${Math.max(0, remainingDays)} Days`;
+        }
+
+        const textY = element.y + element.height / 2;
+        let textX = element.x;
+        if (element.textAlign === 'center') textX = element.x + element.width / 2;
+        else if (element.textAlign === 'right') textX = element.x + element.width;
+
+        ctx.fillText(content, textX, textY);
+      }
+      
+      ctx.restore();
+    }
+
+    return canvas.toDataURL();
   };
 
   return (
