@@ -46,20 +46,6 @@ const ticketTemplates: TemplateConfig[] = [
     category: 'sports',
     preview: 'bg-gradient-to-r from-green-600 to-emerald-600',
     colors: { primary: '#059669', secondary: '#10b981', accent: '#f59e0b' }
-  },
-  {
-    id: 'workshop',
-    name: 'Workshop & Training',
-    category: 'education',
-    preview: 'bg-gradient-to-r from-orange-500 to-amber-500',
-    colors: { primary: '#ea580c', secondary: '#f59e0b', accent: '#3b82f6' }
-  },
-  {
-    id: 'gala',
-    name: 'Elegant Gala',
-    category: 'formal',
-    preview: 'bg-gradient-to-r from-slate-800 to-slate-900',
-    colors: { primary: '#1e293b', secondary: '#475569', accent: '#fbbf24' }
   }
 ];
 
@@ -136,8 +122,17 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
             onClick={() => handleTemplateClick(template)}
           >
             <CardContent className="p-3">
-              <div className={`h-24 rounded-md mb-3 ${template.preview} flex items-center justify-center`}>
+              <div className={`h-24 rounded-md mb-3 ${template.preview} flex items-center justify-center relative`}>
                 <div className="text-white text-sm font-semibold">TICKET</div>
+                {/* Sample QR Code */}
+                <div className="absolute top-1 right-1 w-6 h-6 bg-white rounded border-2 border-black">
+                  <div className="w-full h-full bg-black opacity-20 rounded"></div>
+                  <div className="absolute inset-1 grid grid-cols-3 gap-px">
+                    {[...Array(9)].map((_, i) => (
+                      <div key={i} className={`bg-black ${Math.random() > 0.5 ? 'opacity-100' : 'opacity-0'}`}></div>
+                    ))}
+                  </div>
+                </div>
               </div>
               <h4 className="font-medium text-sm">{template.name}</h4>
               <p className="text-xs text-muted-foreground capitalize">{template.category}</p>

@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { User, Building2, Mail, Phone, Save, ArrowLeft } from 'lucide-react';
+import { User, Building2, Mail, Phone, Save, ArrowLeft, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -211,6 +211,21 @@ const Profile = () => {
                     </Button>
                   </div>
                 </form>
+                
+                <Separator />
+                
+                {/* Account Settings */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Account Settings</h3>
+                  <div className="flex gap-4">
+                    <Button variant="outline" asChild>
+                      <Link to="/settings">
+                        <Shield className="w-4 h-4 mr-2" />
+                        Account Settings
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
