@@ -626,7 +626,16 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
               <Button onClick={reset} className="flex-1">
                 Create Another Ticket
               </Button>
-              <Button variant="outline" onClick={onClose}>Close</Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  onClose();
+                  window.location.href = '/dashboard';
+                }}
+                className="flex-1"
+              >
+                Done - Go to Dashboard
+              </Button>
             </div>
           </div>
         )}

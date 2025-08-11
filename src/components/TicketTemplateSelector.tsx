@@ -23,57 +23,57 @@ const ticketTemplates: TemplateConfig[] = [
     id: 'corporate',
     name: 'Corporate Professional',
     category: 'business',
-    preview: 'bg-gradient-to-r from-blue-600 to-blue-800',
-    colors: { primary: '#1e40af', secondary: '#3b82f6', accent: '#fbbf24' }
+    preview: 'bg-gradient-to-br from-slate-800 via-blue-900 to-slate-900',
+    colors: { primary: '#1e293b', secondary: '#1e40af', accent: '#FFD700' }
   },
   {
     id: 'conference',
     name: 'Tech Conference',
     category: 'technology',
-    preview: 'bg-gradient-to-r from-purple-600 to-indigo-600',
-    colors: { primary: '#7c3aed', secondary: '#a855f7', accent: '#10b981' }
+    preview: 'bg-gradient-to-br from-purple-900 via-indigo-800 to-blue-900',
+    colors: { primary: '#4c1d95', secondary: '#3730a3', accent: '#34d399' }
   },
   {
     id: 'music',
     name: 'Music Festival',
     category: 'entertainment',
-    preview: 'bg-gradient-to-r from-pink-500 to-rose-500',
-    colors: { primary: '#ec4899', secondary: '#f43f5e', accent: '#fbbf24' }
+    preview: 'bg-gradient-to-br from-rose-600 via-pink-700 to-purple-800',
+    colors: { primary: '#e11d48', secondary: '#be185d', accent: '#FFD700' }
   },
   {
     id: 'sports',
     name: 'Sports Event',
     category: 'sports',
-    preview: 'bg-gradient-to-r from-green-600 to-emerald-600',
-    colors: { primary: '#059669', secondary: '#10b981', accent: '#f59e0b' }
+    preview: 'bg-gradient-to-br from-emerald-700 via-green-800 to-teal-800',
+    colors: { primary: '#047857', secondary: '#065f46', accent: '#fbbf24' }
   },
   {
     id: 'elegant',
     name: 'Elegant Evening',
     category: 'formal',
-    preview: 'bg-gradient-to-r from-gray-800 to-gray-900',
-    colors: { primary: '#1f2937', secondary: '#374151', accent: '#d97706' }
+    preview: 'bg-gradient-to-br from-black via-gray-900 to-slate-800',
+    colors: { primary: '#111827', secondary: '#1f2937', accent: '#d4af37' }
   },
   {
     id: 'wedding',
     name: 'Wedding Celebration',
     category: 'wedding',
-    preview: 'bg-gradient-to-r from-rose-400 to-pink-400',
+    preview: 'bg-gradient-to-br from-rose-300 via-pink-400 to-purple-400',
     colors: { primary: '#fb7185', secondary: '#f472b6', accent: '#fbbf24' }
   },
   {
     id: 'workshop',
     name: 'Educational Workshop',
     category: 'education',
-    preview: 'bg-gradient-to-r from-teal-500 to-cyan-500',
-    colors: { primary: '#14b8a6', secondary: '#06b6d4', accent: '#f59e0b' }
+    preview: 'bg-gradient-to-br from-teal-600 via-cyan-700 to-blue-700',
+    colors: { primary: '#0f766e', secondary: '#0891b2', accent: '#f59e0b' }
   },
   {
     id: 'party',
     name: 'Party Celebration',
     category: 'party',
-    preview: 'bg-gradient-to-r from-yellow-400 to-orange-400',
-    colors: { primary: '#facc15', secondary: '#fb923c', accent: '#dc2626' }
+    preview: 'bg-gradient-to-br from-amber-400 via-orange-500 to-red-500',
+    colors: { primary: '#f59e0b', secondary: '#ea580c', accent: '#dc2626' }
   }
 ];
 
@@ -95,7 +95,8 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
     secondaryColor: '#3b82f6',
     accentColor: '#fbbf24',
     fontFamily: 'Arial',
-    backgroundImage: null as File | null
+    backgroundImage: null as File | null,
+    backgroundOpacity: 0.3
   });
 
   const handleTemplateClick = (template: TemplateConfig) => {
@@ -148,14 +149,36 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
             onClick={() => handleTemplateClick(template)}
           >
             <CardContent className="p-3">
-              <div className={`h-24 rounded-md mb-3 ${template.preview} flex items-center justify-center relative`}>
-                <div className="text-white text-sm font-semibold">TICKET</div>
-                {/* Sample QR Code */}
-                <div className="absolute top-1 right-1 w-6 h-6 bg-white rounded border-2 border-black">
-                  <div className="w-full h-full bg-black opacity-20 rounded"></div>
-                  <div className="absolute inset-1 grid grid-cols-3 gap-px">
-                    {[...Array(9)].map((_, i) => (
-                      <div key={i} className={`bg-black ${Math.random() > 0.5 ? 'opacity-100' : 'opacity-0'}`}></div>
+              <div className={`h-32 rounded-lg mb-3 ${template.preview} flex items-center justify-between p-4 relative overflow-hidden`}>
+                {/* Background pattern overlay */}
+                <div className="absolute inset-0 bg-black/20"></div>
+                
+                {/* Left side - Event info */}
+                <div className="relative z-10 text-white">
+                  <div className="text-xs font-bold tracking-wider opacity-80">EVENT</div>
+                  <div className="text-lg font-bold">{template.name.split(' ')[0]}</div>
+                  <div className="text-xs opacity-70 mt-1">PARTICIPANT NAME</div>
+                  <div className="text-xs font-mono mt-1">PIN: 123456</div>
+                </div>
+                
+                {/* Date boxes */}
+                <div className="relative z-10 flex items-center gap-2">
+                  <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded p-2 text-center">
+                    <div className="text-white font-bold text-sm">25</div>
+                    <div className="text-white/80 text-xs">DEC</div>
+                  </div>
+                  <div className="text-white text-xs">TO</div>
+                  <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded p-2 text-center">
+                    <div className="text-white font-bold text-sm">27</div>
+                    <div className="text-white/80 text-xs">DEC</div>
+                  </div>
+                </div>
+                
+                {/* QR Code */}
+                <div className="relative z-10 bg-white rounded-lg p-2">
+                  <div className="w-12 h-12 bg-black/10 rounded grid grid-cols-4 gap-px p-1">
+                    {[...Array(16)].map((_, i) => (
+                      <div key={i} className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-20'} rounded-sm`}></div>
                     ))}
                   </div>
                 </div>
@@ -302,6 +325,23 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
                 accept="image/*"
                 onChange={(e) => handleFileUpload('backgroundImage', e.target.files?.[0] || null)}
               />
+              {customizations.backgroundImage && (
+                <div className="space-y-2">
+                  <Label>Background Opacity: {Math.round(customizations.backgroundOpacity * 100)}%</Label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={customizations.backgroundOpacity}
+                    onChange={(e) => setCustomizations(prev => ({
+                      ...prev,
+                      backgroundOpacity: parseFloat(e.target.value)
+                    }))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Preview */}
