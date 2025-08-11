@@ -77,7 +77,11 @@ const TicketView: React.FC = () => {
         return;
       }
 
-      setTicket(ticketData);
+      setTicket({
+        ...ticketData,
+        used_benefits: ticketData.used_benefits || [],
+        total_benefits_used: ticketData.total_benefits_used || 0
+      });
       setUsedBenefits(ticketData.used_benefits || []);
 
       // Fetch event data

@@ -50,13 +50,16 @@ export type Database = {
           pin_code: string
           qr_code: string
           selected_benefits: string[] | null
+          status: string | null
           ticket_design_url: string | null
           ticket_holder_email: string
           ticket_holder_name: string
           ticket_role: string | null
+          total_benefits_used: number | null
           transport_included: boolean | null
           updated_at: string
           used_at: string | null
+          used_benefits: string[] | null
         }
         Insert: {
           accommodation_type?: string | null
@@ -69,13 +72,16 @@ export type Database = {
           pin_code: string
           qr_code: string
           selected_benefits?: string[] | null
+          status?: string | null
           ticket_design_url?: string | null
           ticket_holder_email: string
           ticket_holder_name: string
           ticket_role?: string | null
+          total_benefits_used?: number | null
           transport_included?: boolean | null
           updated_at?: string
           used_at?: string | null
+          used_benefits?: string[] | null
         }
         Update: {
           accommodation_type?: string | null
@@ -88,13 +94,16 @@ export type Database = {
           pin_code?: string
           qr_code?: string
           selected_benefits?: string[] | null
+          status?: string | null
           ticket_design_url?: string | null
           ticket_holder_email?: string
           ticket_holder_name?: string
           ticket_role?: string | null
+          total_benefits_used?: number | null
           transport_included?: boolean | null
           updated_at?: string
           used_at?: string | null
+          used_benefits?: string[] | null
         }
         Relationships: [
           {
