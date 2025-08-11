@@ -124,9 +124,7 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
     }
   };
 
-  const filteredTemplates = eventCategory 
-    ? ticketTemplates.filter(t => t.category === eventCategory.toLowerCase())
-    : ticketTemplates;
+  const filteredTemplates = ticketTemplates; // Show all templates regardless of category for better UX
 
   return (
     <div className="space-y-6">
