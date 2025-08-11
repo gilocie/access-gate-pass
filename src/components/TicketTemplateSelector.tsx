@@ -137,7 +137,7 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
       </div>
 
       {/* Template Grid */}
-      <div className="grid md:grid-cols-3 gap-4 max-h-60 overflow-y-auto">
+      <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
         {filteredTemplates.map((template) => (
           <Card 
             key={template.id} 
@@ -149,12 +149,13 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
             onClick={() => handleTemplateClick(template)}
           >
             <CardContent className="p-3">
-              <div className={`h-40 rounded-lg mb-3 ${template.preview} relative overflow-hidden`}>
+              <div className={`${template.preview} relative overflow-hidden rounded-lg mb-3 mx-auto`}
+                   style={{ width: '605px', height: '151px' }}>
                 {/* Background pattern overlay */}
                 <div className="absolute inset-0 bg-black/30"></div>
                 
                 {/* Logo area */}
-                <div className="absolute top-3 left-3 bg-white/90 rounded-lg p-2 w-16 h-12 flex items-center justify-center">
+                <div className="absolute top-3 left-3 bg-white/90 rounded-lg p-2 w-20 h-16 flex items-center justify-center">
                   <div className="text-xs font-bold text-gray-700">LOGO</div>
                 </div>
                 

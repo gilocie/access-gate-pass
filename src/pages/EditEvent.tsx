@@ -49,6 +49,7 @@ interface EventTicket {
   is_used: boolean;
   is_active: boolean;
   created_at: string;
+  pin_code: string;
 }
 
 const EditEvent = () => {
@@ -434,13 +435,19 @@ const EditEvent = () => {
                             >
                               {ticket.is_active ? 'Deactivate' : 'Activate'}
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" onClick={() => {
+                              window.open(`/ticket-view?pinCode=${ticket.pin_code}&eventId=${event.id}&action=download`, '_blank');
+                            }}>
                               <Download className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" onClick={() => {
+                              window.open(`/ticket-view?pinCode=${ticket.pin_code}&eventId=${event.id}`, '_blank');
+                            }}>
                               <Send className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" onClick={() => {
+                              window.open(`/ticket-view?pinCode=${ticket.pin_code}&eventId=${event.id}`, '_blank');
+                            }}>
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button 

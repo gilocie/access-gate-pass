@@ -82,16 +82,33 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
   }, [currentStep, formData]);
 
   const generatePinAndQR = async () => {
-    // Generate 6-digit unique code
-    const newPinCode = Math.floor(100000 + Math.random() * 900000).toString();
-    setPinCode(newPinCode);
-    
+    // Ensure 6-digit code is unique per event
+    const generatePin = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+    let uniquePin = generatePin();
+    try {
+      for (let i = 0; i < 5; i++) {
+        const { count, error } = await supabase
+          .from('event_tickets')
+          .select('id', { count: 'exact', head: true })
+          .eq('event_id', event.id)
+          .eq('pin_code', uniquePin);
+        if (error) throw error;
+        if (!count) break; // unique
+        uniquePin = generatePin();
+      }
+    } catch (e) {
+      console.warn('PIN uniqueness check failed, proceeding with generated code');
+    }
+
+    setPinCode(uniquePin);
+
     // Create QR data that redirects to ticket view page
-    const qrData = `${window.location.origin}/ticket-view?pinCode=${newPinCode}&eventId=${event.id}`;
+    const qrData = `${window.location.origin}/ticket-view?pinCode=${uniquePin}&eventId=${event.id}`;
 
     try {
       const qrCodeURL = await QRCode.toDataURL(qrData, {
-        width: 200,
+        width: 512,
         margin: 1,
         color: {
           dark: '#000000',
@@ -100,7 +117,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
         errorCorrectionLevel: 'M'
       });
       setQrCodeDataURL(qrCodeURL);
-      generateTicketPreview(qrCodeURL, newPinCode);
+      generateTicketPreview(qrCodeURL, uniquePin);
     } catch (error) {
       console.error('Error generating QR code:', error);
     }
