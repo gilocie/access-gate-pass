@@ -82,7 +82,8 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
   }, [currentStep, formData]);
 
   const generatePinAndQR = async () => {
-    const newPinCode = Math.random().toString().slice(2, 8);
+    // Generate 6-digit unique code
+    const newPinCode = Math.floor(100000 + Math.random() * 900000).toString();
     setPinCode(newPinCode);
     
     const qrData = JSON.stringify({
@@ -90,6 +91,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
       participantName: formData.participantName,
       email: formData.email,
       pinCode: newPinCode,
+      ticketId: `${event.id}-${Date.now()}`,
       timestamp: Date.now()
     });
 
@@ -109,6 +111,14 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
     }
   };
 
+  const refreshPinCode = () => {
+    generatePinAndQR();
+    toast({
+      title: "New Code Generated",
+      description: "A new 6-digit code has been generated for this ticket."
+    });
+  };
+
   const generateTicketPreview = (qrCodeURL: string, pin: string) => {
     if (!canvasRef.current) return;
 
@@ -116,108 +126,148 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
-    canvas.width = 800;
-    canvas.height = 400;
+    // Set canvas size matching the reference design
+    canvas.width = 900;
+    canvas.height = 300;
 
-    // Use template colors if available
-    const primaryColor = selectedTemplate?.customizations?.primaryColor || '#4F46E5';
-    const secondaryColor = selectedTemplate?.customizations?.secondaryColor || '#7C3AED';
+    // Template colors with opacity support
+    const primaryColor = selectedTemplate?.customizations?.primaryColor || '#1a1a1a';
+    const secondaryColor = selectedTemplate?.customizations?.secondaryColor || '#2a2a2a';
     const accentColor = selectedTemplate?.customizations?.accentColor || '#FFD700';
     const fontFamily = selectedTemplate?.customizations?.fontFamily || 'Arial';
 
-    // Background
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    // Background with opacity
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
     gradient.addColorStop(0, primaryColor);
     gradient.addColorStop(1, secondaryColor);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Event name
+    // Background overlay for opacity effect
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Logo area (left side rounded rectangle)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.beginPath();
+    ctx.roundRect(20, 20, 120, 80, 10);
+    ctx.fill();
+    
+    // Logo text placeholder
+    ctx.fillStyle = primaryColor;
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('LOGO', 80, 65);
+
+    // Event name - large yellow text at top
     ctx.fillStyle = accentColor;
-    ctx.font = `bold 32px ${fontFamily}`;
+    ctx.font = `bold 36px ${fontFamily}`;
     ctx.textAlign = 'left';
-    ctx.fillText(event.title.toUpperCase(), 50, 60);
+    ctx.fillText(event.title.toUpperCase(), 160, 60);
 
-    // Participant name
+    // Participant name - white text below event name
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = `24px ${fontFamily}`;
-    ctx.fillText(formData.participantName.toUpperCase(), 50, 120);
+    ctx.font = `20px ${fontFamily}`;
+    ctx.fillText(`TICKET USER: ${formData.participantName.toUpperCase()}`, 160, 90);
 
-    // Dates
+    // Date section
     const startDate = new Date(event.event_date);
     const endDate = event.event_end_date ? new Date(event.event_end_date) : startDate;
     
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '16px Arial';
-    
     // Start date box
     ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.fillRect(50, 150, 100, 80);
-    ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 24px Arial';
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(160, 120, 60, 60, 8);
+    ctx.fill();
+    ctx.stroke();
+    
+    ctx.fillStyle = accentColor;
+    ctx.font = 'bold 20px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(startDate.getDate().toString().padStart(2, '0'), 100, 180);
+    ctx.fillText(startDate.getDate().toString().padStart(2, '0'), 190, 145);
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = '12px Arial';
-    ctx.fillText(startDate.toLocaleDateString('en-US', { month: 'short' }), 100, 195);
-    ctx.fillText(startDate.getFullYear().toString(), 100, 210);
+    ctx.font = '10px Arial';
+    ctx.fillText(startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(), 190, 160);
+    ctx.fillText(startDate.getFullYear().toString(), 190, 172);
 
     // "TO" text
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = '14px Arial';
-    ctx.fillText('TO', 180, 190);
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText('TO', 240, 155);
 
     // End date box
     ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.fillRect(210, 150, 100, 80);
-    ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 24px Arial';
-    ctx.fillText(endDate.getDate().toString().padStart(2, '0'), 260, 180);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '12px Arial';
-    ctx.fillText(endDate.toLocaleDateString('en-US', { month: 'short' }), 260, 195);
-    ctx.fillText(endDate.getFullYear().toString(), 260, 210);
-
-    // Status
-    ctx.fillStyle = '#FFD700';
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(260, 120, 60, 60, 8);
+    ctx.fill();
+    ctx.stroke();
+    
+    ctx.fillStyle = accentColor;
     ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(endDate.getDate().toString().padStart(2, '0'), 290, 145);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '10px Arial';
+    ctx.fillText(endDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(), 290, 160);
+    ctx.fillText(endDate.getFullYear().toString(), 290, 172);
+
+    // Status section
+    ctx.fillStyle = accentColor;
+    ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'left';
-    ctx.fillText('STATUS', 400, 180);
+    ctx.fillText('STATUS', 360, 140);
     ctx.fillStyle = '#00FF00';
-    ctx.fillText('VALID', 400, 200);
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText('VALID', 360, 160);
 
-    // Benefits used
-    ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 20px Arial';
-    ctx.fillText('B USED', 500, 180);
+    // Benefits used section
+    ctx.fillStyle = accentColor;
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText('B USED', 480, 140);
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = '16px Arial';
-    ctx.fillText(`0/${formData.selectedBenefits.length}`, 500, 200);
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText(`0/${formData.selectedBenefits.length}`, 480, 160);
 
-    // Expiry date
-    ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 12px Arial';
-    ctx.fillText('EXPIRY DATE:', 50, 260);
+    // Bottom info
+    ctx.fillStyle = accentColor;
+    ctx.font = 'bold 10px Arial';
+    ctx.fillText('EXPIRY DATE:', 160, 220);
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(endDate.toLocaleDateString(), 130, 260);
+    ctx.font = '10px Arial';
+    ctx.fillText(endDate.toLocaleDateString('en-US'), 160, 235);
 
-    // Remaining days
     const remainingDays = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    ctx.fillStyle = '#FFD700';
-    ctx.fillText('REMAINING DAYS:', 250, 260);
+    ctx.fillStyle = accentColor;
+    ctx.font = 'bold 10px Arial';
+    ctx.fillText('REMAINING DAYS:', 300, 220);
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(`${Math.max(0, remainingDays)} Days`, 340, 260);
+    ctx.font = '10px Arial';
+    ctx.fillText(`${Math.max(0, remainingDays)} Days`, 300, 235);
 
-    // QR Code positioned on right side in square box
+    // 6-digit PIN display
+    ctx.fillStyle = accentColor;
+    ctx.font = 'bold 10px Arial';
+    ctx.fillText('PIN CODE:', 160, 255);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText(pin, 210, 255);
+
+    // QR Code - positioned on right side in rounded square
     if (qrCodeURL) {
       const qrImg = new Image();
       qrImg.onload = () => {
-        // QR code background - square box on right side
+        // QR code background with rounded corners
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(620, 50, 150, 150);
-        // QR code positioned in center of the square
-        ctx.drawImage(qrImg, 630, 60, 130, 130);
+        ctx.beginPath();
+        ctx.roundRect(750, 40, 130, 130, 10);
+        ctx.fill();
+        
+        // QR code positioned in center
+        ctx.drawImage(qrImg, 760, 50, 110, 110);
       };
       qrImg.src = qrCodeURL;
     }
@@ -499,9 +549,19 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
           <div className="space-y-6">
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-2">Ticket Preview</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                6-Digit PIN: <Badge variant="outline" className="font-mono text-lg">{pinCode}</Badge>
-              </p>
+              <div className="flex items-center justify-center gap-4 mb-4">
+                <p className="text-sm text-muted-foreground">
+                  6-Digit PIN: <Badge variant="outline" className="font-mono text-lg">{pinCode}</Badge>
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={refreshPinCode}
+                  className="text-xs"
+                >
+                  Refresh PIN
+                </Button>
+              </div>
             </div>
 
             {ticketPreview && (
@@ -532,6 +592,9 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
               <p className="text-sm text-muted-foreground">
                 The ticket has been created and is ready for download or sharing.
               </p>
+              <p className="text-sm">
+                Final PIN Code: <Badge variant="outline" className="font-mono text-lg">{pinCode}</Badge>
+              </p>
             </div>
 
             {ticketPreview && (
@@ -540,7 +603,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
               </div>
             )}
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               <Button onClick={downloadTicket} className="flex items-center justify-center">
                 <Download className="w-4 h-4 mr-2" />
                 Download Ticket
@@ -548,6 +611,14 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
               <Button onClick={sendTicketByEmail} variant="outline" className="flex items-center justify-center">
                 <Send className="w-4 h-4 mr-2" />
                 Send by Email
+              </Button>
+              <Button 
+                onClick={() => window.open(`/ticket-view?pinCode=${pinCode}&eventId=${event.id}`, '_blank')} 
+                variant="secondary" 
+                className="flex items-center justify-center"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View Ticket
               </Button>
             </div>
 
