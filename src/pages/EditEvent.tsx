@@ -23,6 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import TicketGenerator from '@/components/TicketGenerator';
 import QRScanner from '@/components/QRScanner';
+import TicketEditorModal from '@/components/TicketEditorModal';
 
 interface Event {
   id: string;
@@ -63,6 +64,7 @@ const EditEvent = () => {
   const [loading, setLoading] = useState(true);
   const [showTicketGenerator, setShowTicketGenerator] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   
   const [editData, setEditData] = useState({
     title: '',
@@ -445,9 +447,16 @@ const EditEvent = () => {
                             }}>
                               <Send className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => {
-                              window.open(`/ticket-view?pinCode=${ticket.pin_code}&eventId=${event.id}`, '_blank');
-                            }}>
+                            <Link to={`/ticket-view?pinCode=${ticket.pin_code}&eventId=${event.id}`}>
+                              <Button size="sm" variant="outline">
+                                View
+                              </Button>
+                            </Link>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => setEditingTicketId(ticket.id)}
+                            >
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button 
@@ -486,6 +495,19 @@ const EditEvent = () => {
           isOpen={showQRScanner}
           onClose={() => setShowQRScanner(false)}
           eventId={event.id}
+        />
+      )}
+
+      {editingTicketId && (
+        <TicketEditorModal
+          isOpen={!!editingTicketId}
+          onClose={() => setEditingTicketId(null)}
+          ticketId={editingTicketId}
+          eventId={event.id}
+          onTicketUpdated={() => {
+            fetchTickets();
+            setEditingTicketId(null);
+          }}
         />
       )}
     </div>

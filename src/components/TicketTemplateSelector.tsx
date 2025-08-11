@@ -143,7 +143,9 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
         elements: template.elements,
         canvasSize: { width: template.canvas_width, height: template.canvas_height },
         backgroundColor: template.background_color,
-        backgroundImage: template.background_image_url
+        backgroundImage: template.background_image_url,
+        isCustomTemplate: true,
+        customTemplateId: template.id
       }
     });
   };
@@ -190,19 +192,19 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
       {customTemplates.length > 0 && (
         <div className="space-y-4">
           <h4 className="text-lg font-medium">Custom Templates</h4>
-          <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
-            {customTemplates.map((template) => (
-              <Card 
-                key={template.id} 
-                className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
-                onClick={() => handleCustomTemplateClick(template)}
-              >
-                <CardContent className="p-3">
-                  <div 
-                    className="relative overflow-hidden rounded-lg mb-3 mx-auto border"
-                    style={{ 
-                      width: '605px', 
-                      height: '151px',
+        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6 max-h-60 overflow-y-auto">
+          {customTemplates.map((template) => (
+            <Card 
+              key={template.id} 
+              className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
+              onClick={() => handleCustomTemplateClick(template)}
+            >
+              <CardContent className="p-3">
+                <div 
+                  className="relative overflow-hidden rounded-lg mb-3 mx-auto border"
+                  style={{ 
+                    width: '605px', 
+                    height: '151px',
                       backgroundColor: template.background_color || '#1e293b',
                       backgroundImage: template.background_image_url ? `url(${template.background_image_url})` : undefined,
                       backgroundSize: 'cover',
@@ -269,7 +271,7 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
       {/* Built-in Template Grid */}
       <div className="space-y-4">
         <h4 className="text-lg font-medium">Built-in Templates</h4>
-        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6 max-h-60 overflow-y-auto">
         {filteredTemplates.map((template) => (
           <Card 
             key={template.id} 

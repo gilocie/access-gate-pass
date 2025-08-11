@@ -66,6 +66,11 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
   const [templateCategory, setTemplateCategory] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [backgroundGradient, setBackgroundGradient] = useState('');
+  const [backgroundOpacity, setBackgroundOpacity] = useState(1);
+  const [undoHistory, setUndoHistory] = useState<TicketElement[][]>([]);
+  const [redoHistory, setRedoHistory] = useState<TicketElement[][]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const elementTypes = [
     { type: 'text', icon: Type, label: 'Text' },
@@ -81,6 +86,10 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
   ];
 
   const addElement = (type: TicketElement['type']) => {
+    // Save current state to undo history
+    setUndoHistory(prev => [...prev, elements]);
+    setRedoHistory([]);
+    
     const newElement: TicketElement = {
       id: `element-${Date.now()}`,
       type,
@@ -92,7 +101,7 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
                type === 'event-name' ? 'EVENT NAME' :
                type === 'user-name' ? 'USER NAME' :
                type === 'status' ? 'VALID' :
-               type === 'benefits' ? '2/7' :
+               type === 'benefits' ? '0/3' :
                type === 'remaining-days' ? '6 Days' :
                type === 'pin-code' ? '123456' :
                '',
@@ -117,7 +126,30 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
     }
   };
 
+  const undo = () => {
+    if (undoHistory.length > 0) {
+      const previousState = undoHistory[undoHistory.length - 1];
+      setRedoHistory(prev => [...prev, elements]);
+      setElements(previousState);
+      setUndoHistory(prev => prev.slice(0, -1));
+      setSelectedElement(null);
+    }
+  };
+
+  const redo = () => {
+    if (redoHistory.length > 0) {
+      const nextState = redoHistory[redoHistory.length - 1];
+      setUndoHistory(prev => [...prev, elements]);
+      setElements(nextState);
+      setRedoHistory(prev => prev.slice(0, -1));
+      setSelectedElement(null);
+    }
+  };
+
   const deleteElement = (id: string) => {
+    // Save current state to undo history
+    setUndoHistory(prev => [...prev, elements]);
+    setRedoHistory([]);
     setElements(prev => prev.filter(el => el.id !== id));
     setSelectedElement(null);
   };
@@ -242,12 +274,13 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
       fontWeight: element.fontWeight,
       transform: `rotate(${element.rotation || 0}deg)`,
       cursor: 'move',
-      border: selectedElement?.id === element.id ? '2px solid #3b82f6' : '1px solid transparent',
+      border: selectedElement?.id === element.id ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.3)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: element.textAlign === 'center' ? 'center' : element.textAlign === 'right' ? 'flex-end' : 'flex-start',
-      padding: '4px',
-      zIndex: selectedElement?.id === element.id ? 10 : 1
+      padding: '2px',
+      zIndex: selectedElement?.id === element.id ? 10 : 1,
+      boxSizing: 'border-box' as const
     };
 
     if (element.type === 'qr-code') {
@@ -281,11 +314,33 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
           style={style}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
-          <div className="w-full h-full bg-white/90 rounded-lg flex items-center justify-center">
+          <div className="w-full h-full bg-white/90 rounded-lg flex items-center justify-center relative">
             {element.imageUrl ? (
               <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
             ) : (
-              <div className="text-xs font-bold text-gray-700">LOGO</div>
+              <>
+                <div className="text-xs font-bold text-gray-700">LOGO</div>
+                {selectedElement?.id === element.id && (
+                  <div className="absolute top-0 right-0">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            updateElement(element.id, { imageUrl: reader.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="absolute opacity-0 w-6 h-6 cursor-pointer"
+                    />
+                    <Upload className="w-4 h-4 text-blue-500 cursor-pointer" />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -333,21 +388,64 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
                 </div>
               </div>
               <div>
-                <Label>Background Color</Label>
-                <div className="flex gap-2">
+                <Label>Background Type</Label>
+                <Select value={backgroundGradient ? 'gradient' : 'solid'} onValueChange={(value) => {
+                  if (value === 'solid') {
+                    setBackgroundGradient('');
+                  } else {
+                    setBackgroundGradient('linear-gradient(135deg, #3b82f6, #1e40af)');
+                  }
+                }}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="solid">Solid Color</SelectItem>
+                    <SelectItem value="gradient">Gradient</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {!backgroundGradient ? (
+                <div>
+                  <Label>Background Color</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={backgroundColor}
+                      onChange={(e) => setBackgroundColor(e.target.value)}
+                      className="w-16"
+                    />
+                    <Input
+                      value={backgroundColor}
+                      onChange={(e) => setBackgroundColor(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Label>Gradient</Label>
                   <Input
-                    type="color"
-                    value={backgroundColor}
-                    onChange={(e) => setBackgroundColor(e.target.value)}
-                    className="w-16"
-                  />
-                  <Input
-                    value={backgroundColor}
-                    onChange={(e) => setBackgroundColor(e.target.value)}
-                    className="flex-1"
+                    value={backgroundGradient}
+                    onChange={(e) => setBackgroundGradient(e.target.value)}
+                    placeholder="linear-gradient(135deg, #3b82f6, #1e40af)"
                   />
                 </div>
+              )}
+              
+              <div>
+                <Label>Background Opacity: {Math.round(backgroundOpacity * 100)}%</Label>
+                <Slider
+                  value={[backgroundOpacity]}
+                  onValueChange={(value) => setBackgroundOpacity(value[0])}
+                  max={1}
+                  min={0}
+                  step={0.1}
+                  className="w-full"
+                />
               </div>
+              
               <div>
                 <Label>Background Image</Label>
                 <Input
@@ -431,6 +529,14 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
             <Button onClick={onBack} variant="outline">
               Back
             </Button>
+            <Button onClick={undo} variant="outline" disabled={undoHistory.length === 0}>
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Undo
+            </Button>
+            <Button onClick={redo} variant="outline" disabled={redoHistory.length === 0}>
+              <RotateCcw className="w-4 h-4 mr-2 scale-x-[-1]" />
+              Redo
+            </Button>
             <Button onClick={() => onPreview(elements, canvasSize)} variant="outline">
               <Eye className="w-4 h-4 mr-2" />
               Preview
@@ -447,10 +553,11 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
             style={{
               width: canvasSize.width,
               height: canvasSize.height,
-              backgroundColor: backgroundColor,
-              backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+              backgroundColor: backgroundGradient ? undefined : backgroundColor,
+              backgroundImage: backgroundGradient ? backgroundGradient : (backgroundImage ? `url(${backgroundImage})` : undefined),
               backgroundSize: 'cover',
-              backgroundPosition: 'center'
+              backgroundPosition: 'center',
+              opacity: backgroundOpacity
             }}
           >
             {elements.map(renderElement)}
