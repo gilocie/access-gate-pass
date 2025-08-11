@@ -86,14 +86,8 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
     const newPinCode = Math.floor(100000 + Math.random() * 900000).toString();
     setPinCode(newPinCode);
     
-    const qrData = JSON.stringify({
-      eventId: event.id,
-      participantName: formData.participantName,
-      email: formData.email,
-      pinCode: newPinCode,
-      ticketId: `${event.id}-${Date.now()}`,
-      timestamp: Date.now()
-    });
+    // Create QR data that redirects to ticket view page
+    const qrData = `${window.location.origin}/ticket-view?pinCode=${newPinCode}&eventId=${event.id}`;
 
     try {
       const qrCodeURL = await QRCode.toDataURL(qrData, {
@@ -102,7 +96,8 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
         color: {
           dark: '#000000',
           light: '#FFFFFF'
-        }
+        },
+        errorCorrectionLevel: 'M'
       });
       setQrCodeDataURL(qrCodeURL);
       generateTicketPreview(qrCodeURL, newPinCode);
@@ -317,13 +312,8 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
     setIsGenerating(true);
     
     try {
-      const qrData = JSON.stringify({
-        eventId: event.id,
-        participantName: formData.participantName,
-        email: formData.email,
-        pinCode: pinCode,
-        timestamp: Date.now()
-      });
+      // QR code data now points to ticket view URL
+      const qrData = `${window.location.origin}/ticket-view?pinCode=${pinCode}&eventId=${event.id}`;
 
       const { error } = await supabase
         .from('event_tickets')
@@ -339,7 +329,9 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
           accommodation_type: formData.accommodationType,
           transport_included: formData.transportIncluded,
           is_used: false,
-          is_active: true
+          is_active: true,
+          used_benefits: [],
+          total_benefits_used: 0
         });
 
       if (error) throw error;
@@ -349,7 +341,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
         description: "The ticket has been created and is ready for download."
       });
 
-      setCurrentStep(4);
+      setCurrentStep(3);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -603,7 +595,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
               </div>
             )}
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
               <Button onClick={downloadTicket} className="flex items-center justify-center">
                 <Download className="w-4 h-4 mr-2" />
                 Download Ticket
@@ -618,23 +610,23 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
                 className="flex items-center justify-center"
               >
                 <Eye className="w-4 h-4 mr-2" />
-                View Ticket
-              </Button>
-            </div>
-
-            <div className="flex gap-4 pt-4">
-              <Button onClick={reset} className="flex-1">
-                Create Another Ticket
+                Review Ticket
               </Button>
               <Button 
-                variant="outline" 
                 onClick={() => {
                   onClose();
                   window.location.href = '/dashboard';
                 }}
-                className="flex-1"
+                variant="default"
+                className="flex items-center justify-center bg-gradient-primary hover:opacity-90"
               >
-                Done - Go to Dashboard
+                Done
+              </Button>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <Button onClick={reset} variant="outline" className="flex-1">
+                Create Another Ticket
               </Button>
             </div>
           </div>

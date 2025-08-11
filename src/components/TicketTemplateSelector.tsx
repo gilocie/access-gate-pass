@@ -149,36 +149,110 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
             onClick={() => handleTemplateClick(template)}
           >
             <CardContent className="p-3">
-              <div className={`h-32 rounded-lg mb-3 ${template.preview} flex items-center justify-between p-4 relative overflow-hidden`}>
+              <div className={`h-40 rounded-lg mb-3 ${template.preview} relative overflow-hidden`}>
                 {/* Background pattern overlay */}
-                <div className="absolute inset-0 bg-black/20"></div>
+                <div className="absolute inset-0 bg-black/30"></div>
                 
-                {/* Left side - Event info */}
-                <div className="relative z-10 text-white">
-                  <div className="text-xs font-bold tracking-wider opacity-80">EVENT</div>
-                  <div className="text-lg font-bold">{template.name.split(' ')[0]}</div>
-                  <div className="text-xs opacity-70 mt-1">PARTICIPANT NAME</div>
-                  <div className="text-xs font-mono mt-1">PIN: 123456</div>
+                {/* Logo area */}
+                <div className="absolute top-3 left-3 bg-white/90 rounded-lg p-2 w-16 h-12 flex items-center justify-center">
+                  <div className="text-xs font-bold text-gray-700">LOGO</div>
                 </div>
                 
-                {/* Date boxes */}
-                <div className="relative z-10 flex items-center gap-2">
-                  <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded p-2 text-center">
-                    <div className="text-white font-bold text-sm">25</div>
-                    <div className="text-white/80 text-xs">DEC</div>
+                {/* Event name - large yellow/accent text */}
+                <div className="absolute top-4 left-24 right-20">
+                  <div 
+                    className="text-lg font-bold tracking-wider"
+                    style={{ color: template.colors.accent }}
+                  >
+                    EVENT NAME
                   </div>
-                  <div className="text-white text-xs">TO</div>
-                  <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded p-2 text-center">
-                    <div className="text-white font-bold text-sm">27</div>
-                    <div className="text-white/80 text-xs">DEC</div>
+                  <div className="text-white text-sm mt-1">
+                    TICKET USER NAME
                   </div>
+                </div>
+                
+                {/* Date section */}
+                <div className="absolute bottom-16 left-6 flex items-center gap-2">
+                  <div 
+                    className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center border-2"
+                    style={{ borderColor: template.colors.accent }}
+                  >
+                    <div 
+                      className="font-bold text-sm"
+                      style={{ color: template.colors.accent }}
+                    >
+                      04
+                    </div>
+                    <div className="text-white text-xs">AUG</div>
+                  </div>
+                  <div className="text-white text-xs font-bold">TO</div>
+                  <div 
+                    className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center border-2"
+                    style={{ borderColor: template.colors.accent }}
+                  >
+                    <div 
+                      className="font-bold text-sm"
+                      style={{ color: template.colors.accent }}
+                    >
+                      10
+                    </div>
+                    <div className="text-white text-xs">AUG</div>
+                  </div>
+                </div>
+                
+                {/* Status and Benefits */}
+                <div className="absolute bottom-16 left-40">
+                  <div 
+                    className="text-sm font-bold"
+                    style={{ color: template.colors.accent }}
+                  >
+                    STATUS
+                  </div>
+                  <div className="text-green-400 text-xs font-bold">VALID</div>
+                </div>
+                
+                <div className="absolute bottom-16 left-56">
+                  <div 
+                    className="text-sm font-bold"
+                    style={{ color: template.colors.accent }}
+                  >
+                    B USED
+                  </div>
+                  <div className="text-white text-xs font-bold">2/7</div>
+                </div>
+                
+                {/* Bottom info */}
+                <div className="absolute bottom-4 left-6">
+                  <div 
+                    className="text-xs font-bold"
+                    style={{ color: template.colors.accent }}
+                  >
+                    PIN CODE:
+                  </div>
+                  <div className="text-white text-xs font-mono">123456</div>
+                </div>
+                
+                <div className="absolute bottom-4 left-32">
+                  <div 
+                    className="text-xs font-bold"
+                    style={{ color: template.colors.accent }}
+                  >
+                    REMAINING DAYS:
+                  </div>
+                  <div className="text-white text-xs">6 Days</div>
                 </div>
                 
                 {/* QR Code */}
-                <div className="relative z-10 bg-white rounded-lg p-2">
-                  <div className="w-12 h-12 bg-black/10 rounded grid grid-cols-4 gap-px p-1">
-                    {[...Array(16)].map((_, i) => (
-                      <div key={i} className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-20'} rounded-sm`}></div>
+                <div className="absolute top-4 right-4 bg-white rounded-lg p-2 w-20 h-20 flex items-center justify-center">
+                  <div className="w-16 h-16 grid grid-cols-8 gap-px">
+                    {[...Array(64)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className={`bg-black ${
+                          [0,1,2,3,4,5,6,7,8,14,16,22,24,30,32,38,40,46,48,54,56,57,58,59,60,61,62,63].includes(i) ||
+                          Math.random() > 0.65 ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      />
                     ))}
                   </div>
                 </div>
