@@ -30,7 +30,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface TicketElement {
   id: string;
-  type: 'text' | 'qr-code' | 'date' | 'user-name' | 'event-name' | 'status' | 'benefits' | 'remaining-days' | 'logo' | 'background-image' | 'pin-code';
+  type: 'text' | 'qr-code' | 'date' | 'user-name' | 'event-name' | 'status' | 'benefits' | 'remaining-days' | 'logo' | 'background-image' | 'pin-code' | 'rectangle' | 'circle';
   x: number;
   y: number;
   width: number;
@@ -83,6 +83,8 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
     { type: 'remaining-days', icon: Clock, label: 'Remaining Days' },
     { type: 'pin-code', icon: Square, label: 'PIN Code' },
     { type: 'logo', icon: ImageIcon, label: 'Logo' },
+    { type: 'rectangle', icon: Square, label: 'Rectangle' },
+    { type: 'circle', icon: Circle, label: 'Circle' },
   ];
 
   const addElement = (type: TicketElement['type']) => {
@@ -95,20 +97,27 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
       type,
       x: 50,
       y: 50,
-      width: type === 'qr-code' ? 113 : type === 'logo' ? 120 : 200,
-      height: type === 'qr-code' ? 113 : type === 'logo' ? 80 : 40,
+      width: type === 'qr-code' ? 113 : 
+             type === 'logo' ? 120 : 
+             type === 'rectangle' ? 150 : 
+             type === 'circle' ? 100 : 200,
+      height: type === 'qr-code' ? 113 : 
+              type === 'logo' ? 80 : 
+              type === 'rectangle' ? 100 : 
+              type === 'circle' ? 100 : 40,
       content: type === 'text' ? 'Sample Text' : 
                type === 'event-name' ? 'EVENT NAME' :
                type === 'user-name' ? 'USER NAME' :
                type === 'status' ? 'VALID' :
-               type === 'benefits' ? '0/3' :
+               type === 'benefits' ? '0/3 Used' :
                type === 'remaining-days' ? '6 Days' :
                type === 'pin-code' ? '123456' :
                '',
       fontSize: type === 'event-name' ? 28 : 16,
       fontFamily: 'Arial',
-      color: type === 'event-name' ? '#FFD700' : '#FFFFFF',
-      backgroundColor: 'transparent',
+      color: type === 'event-name' ? '#FFD700' : 
+             type === 'rectangle' || type === 'circle' ? 'transparent' : '#FFFFFF',
+      backgroundColor: type === 'rectangle' || type === 'circle' ? '#3b82f6' : 'transparent',
       borderRadius: 0,
       textAlign: 'left',
       fontWeight: type === 'event-name' ? 'bold' : 'normal',
@@ -314,7 +323,10 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
           style={style}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
-          <div className="w-full h-full bg-white/90 rounded-lg flex items-center justify-center relative">
+          <div 
+            className="w-full h-full rounded-lg flex items-center justify-center relative"
+            style={{ backgroundColor: element.backgroundColor || '#ffffff' }}
+          >
             {element.imageUrl ? (
               <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
             ) : (
@@ -343,6 +355,41 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
               </>
             )}
           </div>
+        </div>
+      );
+    }
+
+    if (element.type === 'rectangle') {
+      return (
+        <div
+          key={element.id}
+          style={style}
+          onMouseDown={(e) => handleMouseDown(e, element)}
+        >
+          <div 
+            className="w-full h-full"
+            style={{ 
+              backgroundColor: element.backgroundColor || '#3b82f6',
+              borderRadius: element.borderRadius || 0
+            }}
+          />
+        </div>
+      );
+    }
+
+    if (element.type === 'circle') {
+      return (
+        <div
+          key={element.id}
+          style={style}
+          onMouseDown={(e) => handleMouseDown(e, element)}
+        >
+          <div 
+            className="w-full h-full rounded-full"
+            style={{ 
+              backgroundColor: element.backgroundColor || '#3b82f6'
+            }}
+          />
         </div>
       );
     }
@@ -425,17 +472,27 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
                 </div>
               ) : (
                 <div>
-                  <Label>Gradient</Label>
-                  <Input
-                    value={backgroundGradient}
-                    onChange={(e) => setBackgroundGradient(e.target.value)}
-                    placeholder="linear-gradient(135deg, #3b82f6, #1e40af)"
-                  />
+                  <Label>Gradient Colors</Label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input type="color" className="w-16" placeholder="Start color" />
+                      <Input type="color" className="w-16" placeholder="End color" />
+                    </div>
+                    <Select defaultValue="linear">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Gradient type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="linear">Linear</SelectItem>
+                        <SelectItem value="radial">Radial</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
               
               <div>
-                <Label>Background Opacity: {Math.round(backgroundOpacity * 100)}%</Label>
+                <Label>Background Image Opacity: {Math.round(backgroundOpacity * 100)}%</Label>
                 <Slider
                   value={[backgroundOpacity]}
                   onValueChange={(value) => setBackgroundOpacity(value[0])}
@@ -447,7 +504,7 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
               </div>
               
               <div>
-                <Label>Background Image</Label>
+                <Label>Background Image Upload</Label>
                 <Input
                   type="file"
                   accept="image/*"
@@ -456,6 +513,9 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
                     if (file) handleBackgroundImageUpload(file);
                   }}
                 />
+                {backgroundImage && (
+                  <p className="text-xs text-muted-foreground mt-1">Image uploaded successfully</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -553,13 +613,21 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
             style={{
               width: canvasSize.width,
               height: canvasSize.height,
-              backgroundColor: backgroundGradient ? undefined : backgroundColor,
-              backgroundImage: backgroundGradient ? backgroundGradient : (backgroundImage ? `url(${backgroundImage})` : undefined),
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              opacity: backgroundOpacity
+              background: backgroundGradient || backgroundColor,
+              position: 'relative'
             }}
           >
+            {backgroundImage && (
+              <div 
+                className="absolute inset-0 bg-cover bg-center"
+                style={{
+                  backgroundImage: `url(${backgroundImage})`,
+                  opacity: backgroundOpacity,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+              />
+            )}
             {elements.map(renderElement)}
             
             {elements.length === 0 && (

@@ -424,7 +424,7 @@ const Dashboard = () => {
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <Edit className="w-4 h-4 mr-2" />
-                                Edit
+                                View
                               </Link>
                             </Button>
                             <AlertDialog>

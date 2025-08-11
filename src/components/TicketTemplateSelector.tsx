@@ -154,6 +154,20 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
     loadCustomTemplates(); // Reload templates after creation
   };
 
+  const deleteCustomTemplate = async (templateId: string) => {
+    try {
+      const { error } = await supabase
+        .from('custom_ticket_templates')
+        .delete()
+        .eq('id', templateId);
+      
+      if (error) throw error;
+      loadCustomTemplates(); // Reload after deletion
+    } catch (error) {
+      console.error('Error deleting template:', error);
+    }
+  };
+
   const handleFileUpload = (type: 'logo' | 'backgroundImage', file: File | null) => {
     setCustomizations(prev => ({
       ...prev,
@@ -192,18 +206,30 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
       {customTemplates.length > 0 && (
         <div className="space-y-4">
           <h4 className="text-lg font-medium">Custom Templates</h4>
-        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6 max-h-60 overflow-y-auto">
+        <div className="grid grid-cols-1 gap-6 max-h-60 overflow-y-auto">
           {customTemplates.map((template) => (
             <Card 
               key={template.id} 
-              className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
+              className="cursor-pointer transition-all hover:shadow-lg hover:scale-105 relative group"
               onClick={() => handleCustomTemplateClick(template)}
             >
-              <CardContent className="p-3">
+                 <CardContent className="p-3">
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteCustomTemplate(template.id);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </div>
                 <div 
                   className="relative overflow-hidden rounded-lg mb-3 mx-auto border"
                   style={{ 
-                    width: '605px', 
+                    width: '100%', 
                     height: '151px',
                       backgroundColor: template.background_color || '#1e293b',
                       backgroundImage: template.background_image_url ? `url(${template.background_image_url})` : undefined,
@@ -271,7 +297,7 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
       {/* Built-in Template Grid */}
       <div className="space-y-4">
         <h4 className="text-lg font-medium">Built-in Templates</h4>
-        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6 max-h-60 overflow-y-auto">
+        <div className="grid grid-cols-1 gap-6 max-h-60 overflow-y-auto">
         {filteredTemplates.map((template) => (
           <Card 
             key={template.id} 
@@ -284,7 +310,7 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
           >
             <CardContent className="p-3">
               <div className={`${template.preview} relative overflow-hidden rounded-lg mb-3 mx-auto`}
-                   style={{ width: '605px', height: '151px' }}>
+                   style={{ width: '100%', height: '151px' }}>
                 {/* Background pattern overlay */}
                 <div className="absolute inset-0 bg-black/30"></div>
                 
