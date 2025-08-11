@@ -46,6 +46,34 @@ const ticketTemplates: TemplateConfig[] = [
     category: 'sports',
     preview: 'bg-gradient-to-r from-green-600 to-emerald-600',
     colors: { primary: '#059669', secondary: '#10b981', accent: '#f59e0b' }
+  },
+  {
+    id: 'elegant',
+    name: 'Elegant Evening',
+    category: 'formal',
+    preview: 'bg-gradient-to-r from-gray-800 to-gray-900',
+    colors: { primary: '#1f2937', secondary: '#374151', accent: '#d97706' }
+  },
+  {
+    id: 'wedding',
+    name: 'Wedding Celebration',
+    category: 'wedding',
+    preview: 'bg-gradient-to-r from-rose-400 to-pink-400',
+    colors: { primary: '#fb7185', secondary: '#f472b6', accent: '#fbbf24' }
+  },
+  {
+    id: 'workshop',
+    name: 'Educational Workshop',
+    category: 'education',
+    preview: 'bg-gradient-to-r from-teal-500 to-cyan-500',
+    colors: { primary: '#14b8a6', secondary: '#06b6d4', accent: '#f59e0b' }
+  },
+  {
+    id: 'party',
+    name: 'Party Celebration',
+    category: 'party',
+    preview: 'bg-gradient-to-r from-yellow-400 to-orange-400',
+    colors: { primary: '#facc15', secondary: '#fb923c', accent: '#dc2626' }
   }
 ];
 
