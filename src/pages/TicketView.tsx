@@ -276,12 +276,12 @@ const TicketView: React.FC = () => {
 
               <div>
                 <Label className="text-sm font-medium">PIN Code</Label>
-                <p className="font-mono text-lg">
-                  {ticket.pin_code}
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-lg">{ticket.pin_code}</span>
                   {!isPinUsable && (
-                    <Badge variant="destructive" className="ml-2">Unusable</Badge>
+                    <Badge variant="destructive">Unusable</Badge>
                   )}
-                </p>
+                </div>
               </div>
 
               <div>

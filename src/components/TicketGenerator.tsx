@@ -76,7 +76,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
   ];
 
   useEffect(() => {
-    if (currentStep === 3) {
+    if (currentStep === 2) {
       generatePinAndQR();
     }
   }, [currentStep, formData]);
@@ -305,7 +305,7 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
       });
       return;
     }
-    setCurrentStep(3);
+    setCurrentStep(2);
   };
 
   const generateTicket = async () => {
@@ -410,11 +410,11 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
             )}
             Add Participant - {event.title}
           </DialogTitle>
-          <DialogDescription>
+           <DialogDescription>
             Step {currentStep + 1} of 4: {
               currentStep === 0 ? 'Select Template' :
               currentStep === 1 ? 'Ticket Details' : 
-              currentStep === 2 ? 'Preview & Generate' : 
+              currentStep === 2 ? 'Preview & Generate' :
               'Download & Share'
             }
           </DialogDescription>
@@ -542,9 +542,9 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-2">Ticket Preview</h3>
               <div className="flex items-center justify-center gap-4 mb-4">
-                <p className="text-sm text-muted-foreground">
-                  6-Digit PIN: <Badge variant="outline" className="font-mono text-lg">{pinCode}</Badge>
-                </p>
+                <div className="text-sm text-muted-foreground">
+                  6-Digit PIN: <Badge variant="outline" className="font-mono text-lg ml-2">{pinCode}</Badge>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
@@ -581,12 +581,12 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
           <div className="space-y-6 text-center">
             <div className="space-y-2">
               <h3 className="text-lg font-semibold text-success">Ticket Generated Successfully!</h3>
-              <p className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 The ticket has been created and is ready for download or sharing.
-              </p>
-              <p className="text-sm">
-                Final PIN Code: <Badge variant="outline" className="font-mono text-lg">{pinCode}</Badge>
-              </p>
+              </div>
+              <div className="text-sm">
+                Final PIN Code: <Badge variant="outline" className="font-mono text-lg ml-2">{pinCode}</Badge>
+              </div>
             </div>
 
             {ticketPreview && (

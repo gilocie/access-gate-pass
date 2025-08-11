@@ -418,19 +418,123 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
               )}
             </div>
 
-            {/* Preview */}
+            {/* Live Preview with Selected Template */}
             <div className="space-y-2">
-              <Label>Template Preview</Label>
+              <Label>Live Template Preview</Label>
               <div 
-                className="h-32 rounded-lg flex items-center justify-center text-white font-semibold"
+                className="h-48 rounded-lg relative overflow-hidden"
                 style={{
                   background: `linear-gradient(135deg, ${customizations.primaryColor}, ${customizations.secondaryColor})`,
                   fontFamily: customizations.fontFamily
                 }}
               >
-                <div className="text-center">
-                  <div className="text-lg">EVENT TICKET</div>
-                  <div className="text-sm opacity-80">Preview</div>
+                {/* Background overlay */}
+                <div className="absolute inset-0 bg-black/30"></div>
+                
+                {/* Logo area */}
+                <div className="absolute top-4 left-4 bg-white/90 rounded-lg p-2 w-20 h-16 flex items-center justify-center">
+                  <div className="text-xs font-bold text-gray-700">LOGO</div>
+                </div>
+                
+                {/* Event name */}
+                <div className="absolute top-6 left-28 right-24">
+                  <div 
+                    className="text-2xl font-bold tracking-wider"
+                    style={{ color: customizations.accentColor }}
+                  >
+                    EVENT NAME
+                  </div>
+                  <div className="text-white text-sm mt-1">
+                    TICKET USER NAME
+                  </div>
+                </div>
+                
+                {/* Date section */}
+                <div className="absolute bottom-20 left-6 flex items-center gap-3">
+                  <div 
+                    className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center border-2"
+                    style={{ borderColor: customizations.accentColor }}
+                  >
+                    <div 
+                      className="font-bold text-lg"
+                      style={{ color: customizations.accentColor }}
+                    >
+                      04
+                    </div>
+                    <div className="text-white text-xs">AUG</div>
+                    <div className="text-white text-xs">2025</div>
+                  </div>
+                  <div className="text-white text-sm font-bold">TO</div>
+                  <div 
+                    className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center border-2"
+                    style={{ borderColor: customizations.accentColor }}
+                  >
+                    <div 
+                      className="font-bold text-lg"
+                      style={{ color: customizations.accentColor }}
+                    >
+                      10
+                    </div>
+                    <div className="text-white text-xs">AUG</div>
+                    <div className="text-white text-xs">2025</div>
+                  </div>
+                </div>
+                
+                {/* Status and Benefits */}
+                <div className="absolute bottom-20 left-56">
+                  <div 
+                    className="text-sm font-bold"
+                    style={{ color: customizations.accentColor }}
+                  >
+                    STATUS
+                  </div>
+                  <div className="text-green-400 text-xs font-bold">VALID</div>
+                </div>
+                
+                <div className="absolute bottom-20 left-80">
+                  <div 
+                    className="text-sm font-bold"
+                    style={{ color: customizations.accentColor }}
+                  >
+                    B USED
+                  </div>
+                  <div className="text-white text-xs font-bold">2/7</div>
+                </div>
+                
+                {/* Bottom info */}
+                <div className="absolute bottom-4 left-6">
+                  <div 
+                    className="text-xs font-bold"
+                    style={{ color: customizations.accentColor }}
+                  >
+                    PIN CODE: 
+                    <span className="text-white font-mono ml-1">123456</span>
+                  </div>
+                </div>
+                
+                <div className="absolute bottom-4 left-40">
+                  <div 
+                    className="text-xs font-bold"
+                    style={{ color: customizations.accentColor }}
+                  >
+                    REMAINING DAYS: 
+                    <span className="text-white ml-1">6 Days</span>
+                  </div>
+                </div>
+                
+                {/* QR Code */}
+                <div className="absolute top-6 right-6 bg-white rounded-lg p-3 w-24 h-24 flex items-center justify-center">
+                  <div className="w-18 h-18 grid grid-cols-8 gap-px">
+                    {[...Array(64)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className={`bg-black ${
+                          [0,1,2,3,4,5,6,7,8,14,16,22,24,30,32,38,40,46,48,54,56,57,58,59,60,61,62,63].includes(i) ||
+                          Math.random() > 0.65 ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
