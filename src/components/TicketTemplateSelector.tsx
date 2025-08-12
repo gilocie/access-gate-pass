@@ -206,227 +206,126 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
       {customTemplates.length > 0 && (
         <div className="space-y-4">
           <h4 className="text-lg font-medium">Custom Templates</h4>
-        <div className="grid grid-cols-1 gap-6 max-h-60 overflow-y-auto">
-          {customTemplates.map((template) => (
-            <Card 
-              key={template.id} 
-              className="cursor-pointer transition-all hover:shadow-lg hover:scale-105 relative group"
-              onClick={() => handleCustomTemplateClick(template)}
-            >
-                 <CardContent className="p-3">
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteCustomTemplate(template.id);
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </div>
-                <div 
-                  className="relative overflow-hidden rounded-lg mb-3 mx-auto border"
-                  style={{ 
-                    width: '100%', 
-                    height: '151px',
-                      backgroundColor: template.background_color || '#1e293b',
-                      backgroundImage: template.background_image_url ? `url(${template.background_image_url})` : undefined,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center'
-                    }}
-                  >
-                    {template.elements.map((element: any, index: number) => (
-                      <div
-                        key={index}
-                        style={{
-                          position: 'absolute',
-                          left: element.x,
-                          top: element.y,
-                          width: element.width,
-                          height: element.height,
-                          fontSize: `${(element.fontSize || 16) * 0.8}px`,
-                          fontFamily: element.fontFamily,
-                          color: element.color,
-                          backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
-                          borderRadius: element.borderRadius,
-                          textAlign: element.textAlign,
-                          fontWeight: element.fontWeight,
-                          transform: `rotate(${element.rotation || 0}deg)`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: element.textAlign === 'center' ? 'center' : element.textAlign === 'right' ? 'flex-end' : 'flex-start',
-                          padding: '2px'
-                        }}
-                      >
-                        {element.type === 'qr-code' ? (
-                          <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
-                            <div className="w-full h-full grid grid-cols-6 gap-px">
-                              {[...Array(36)].map((_, i) => (
-                                <div 
-                                  key={i} 
-                                  className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
-                                />
-                              ))}
+          <div className="grid grid-cols-1 gap-4 max-h-60 overflow-y-auto">
+            {customTemplates.map((template) => (
+              <div key={template.id} className="relative group">
+                <Card className="cursor-pointer transition-all hover:shadow-lg">
+                  <CardContent className="p-0">
+                    <div 
+                      className="relative overflow-hidden rounded-lg border"
+                      style={{ 
+                        width: '605px', 
+                        height: '151px',
+                        backgroundColor: template.background_color || '#1e293b',
+                        backgroundImage: template.background_image_url ? `url(${template.background_image_url})` : undefined,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}
+                      onClick={() => handleCustomTemplateClick(template)}
+                    >
+                      {template.elements.map((element: any, index: number) => (
+                        <div
+                          key={index}
+                          style={{
+                            position: 'absolute',
+                            left: element.x,
+                            top: element.y,
+                            width: element.width,
+                            height: element.height,
+                            fontSize: element.fontSize,
+                            fontFamily: element.fontFamily,
+                            color: element.color,
+                            backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
+                            borderRadius: element.borderRadius,
+                            textAlign: element.textAlign,
+                            fontWeight: element.fontWeight,
+                            transform: `rotate(${element.rotation || 0}deg)`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: element.textAlign === 'center' ? 'center' : element.textAlign === 'right' ? 'flex-end' : 'flex-start',
+                            padding: '2px',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {element.type === 'qr-code' ? (
+                            <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
+                              <div className="w-full h-full grid grid-cols-6 gap-px">
+                                {[...Array(36)].map((_, i) => (
+                                  <div 
+                                    key={i} 
+                                    className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
+                                  />
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        ) : element.type === 'logo' ? (
-                          <div className="w-full h-full bg-white/90 rounded flex items-center justify-center">
-                            {element.imageUrl ? (
-                              <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
-                            ) : (
-                              <div className="text-xs font-bold text-gray-700">LOGO</div>
-                            )}
-                          </div>
-                        ) : (
-                          <span>{element.content}</span>
-                        )}
+                          ) : element.type === 'logo' ? (
+                            <div className="w-full h-full bg-transparent rounded flex items-center justify-center">
+                              {element.imageUrl ? (
+                                <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                              ) : (
+                                <ImageIcon className="w-6 h-6 text-white/70" />
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: 'inherit', color: 'inherit' }}>{element.content}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-3 flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-sm">{template.name}</h4>
+                        <p className="text-xs text-muted-foreground capitalize">{template.category}</p>
                       </div>
-                    ))}
-                  </div>
-                  <h4 className="font-medium text-sm">{template.name}</h4>
-                  <p className="text-xs text-muted-foreground capitalize">{template.category}</p>
-                </CardContent>
-              </Card>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Add redesign functionality
+                            onTemplateSelect({
+                              id: template.id,
+                              name: template.name,
+                              category: template.category,
+                              preview: '',
+                              colors: { primary: '#1e293b', secondary: '#3b82f6', accent: '#fbbf24' },
+                              customizations: {
+                                elements: template.elements,
+                                canvasSize: { width: template.canvas_width, height: template.canvas_height },
+                                backgroundColor: template.background_color,
+                                backgroundImage: template.background_image_url,
+                                isCustomTemplate: true,
+                                customTemplateId: template.id,
+                                redesignMode: true
+                              }
+                            });
+                          }}
+                        >
+                          Redesign
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteCustomTemplate(template.id);
+                          }}
+                        >
+                          🗑️
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Built-in Template Grid */}
-      <div className="space-y-4">
-        <h4 className="text-lg font-medium">Built-in Templates</h4>
-        <div className="grid grid-cols-1 gap-6 max-h-60 overflow-y-auto">
-        {filteredTemplates.map((template) => (
-          <Card 
-            key={template.id} 
-            className={`cursor-pointer transition-all hover:shadow-lg ${
-              selectedTemplate?.id === template.id 
-                ? 'ring-2 ring-primary shadow-lg' 
-                : 'hover:scale-105'
-            }`}
-            onClick={() => handleTemplateClick(template)}
-          >
-            <CardContent className="p-3">
-              <div className={`${template.preview} relative overflow-hidden rounded-lg mb-3 mx-auto`}
-                   style={{ width: '100%', height: '151px' }}>
-                {/* Background pattern overlay */}
-                <div className="absolute inset-0 bg-black/30"></div>
-                
-                {/* Logo area */}
-                <div className="absolute top-3 left-3 bg-white/90 rounded-lg p-2 w-20 h-16 flex items-center justify-center">
-                  <div className="text-xs font-bold text-gray-700">LOGO</div>
-                </div>
-                
-                {/* Event name - large yellow/accent text */}
-                <div className="absolute top-4 left-24 right-20">
-                  <div 
-                    className="text-lg font-bold tracking-wider"
-                    style={{ color: template.colors.accent }}
-                  >
-                    EVENT NAME
-                  </div>
-                  <div className="text-white text-sm mt-1">
-                    TICKET USER NAME
-                  </div>
-                </div>
-                
-                {/* Date section */}
-                <div className="absolute bottom-16 left-6 flex items-center gap-2">
-                  <div 
-                    className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center border-2"
-                    style={{ borderColor: template.colors.accent }}
-                  >
-                    <div 
-                      className="font-bold text-sm"
-                      style={{ color: template.colors.accent }}
-                    >
-                      04
-                    </div>
-                    <div className="text-white text-xs">AUG</div>
-                  </div>
-                  <div className="text-white text-xs font-bold">TO</div>
-                  <div 
-                    className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-center border-2"
-                    style={{ borderColor: template.colors.accent }}
-                  >
-                    <div 
-                      className="font-bold text-sm"
-                      style={{ color: template.colors.accent }}
-                    >
-                      10
-                    </div>
-                    <div className="text-white text-xs">AUG</div>
-                  </div>
-                </div>
-                
-                {/* Status and Benefits */}
-                <div className="absolute bottom-16 left-40">
-                  <div 
-                    className="text-sm font-bold"
-                    style={{ color: template.colors.accent }}
-                  >
-                    STATUS
-                  </div>
-                  <div className="text-green-400 text-xs font-bold">VALID</div>
-                </div>
-                
-                <div className="absolute bottom-16 left-56">
-                  <div 
-                    className="text-sm font-bold"
-                    style={{ color: template.colors.accent }}
-                  >
-                    B USED
-                  </div>
-                  <div className="text-white text-xs font-bold">2/7</div>
-                </div>
-                
-                {/* Bottom info */}
-                <div className="absolute bottom-4 left-6">
-                  <div 
-                    className="text-xs font-bold"
-                    style={{ color: template.colors.accent }}
-                  >
-                    PIN CODE:
-                  </div>
-                  <div className="text-white text-xs font-mono">123456</div>
-                </div>
-                
-                <div className="absolute bottom-4 left-32">
-                  <div 
-                    className="text-xs font-bold"
-                    style={{ color: template.colors.accent }}
-                  >
-                    REMAINING DAYS:
-                  </div>
-                  <div className="text-white text-xs">6 Days</div>
-                </div>
-                
-                {/* QR Code */}
-                <div className="absolute top-4 right-4 bg-white rounded-lg p-2 w-20 h-20 flex items-center justify-center">
-                  <div className="w-16 h-16 grid grid-cols-8 gap-px">
-                    {[...Array(64)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        className={`bg-black ${
-                          [0,1,2,3,4,5,6,7,8,14,16,22,24,30,32,38,40,46,48,54,56,57,58,59,60,61,62,63].includes(i) ||
-                          Math.random() > 0.65 ? 'opacity-100' : 'opacity-0'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <h4 className="font-medium text-sm">{template.name}</h4>
-              <p className="text-xs text-muted-foreground capitalize">{template.category}</p>
-            </CardContent>
-          </Card>
-        ))}
-        </div>
-      </div>
-
-      {/* Customization Panel */}
+      {/* Template Customization Panel for built-in templates */}
       {selectedTemplate && (
         <Card>
           <CardHeader>
@@ -461,20 +360,20 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
                       ...prev,
                       primaryColor: e.target.value
                     }))}
-                    className="w-12 h-8 p-1 border rounded"
+                    className="w-16"
                   />
                   <Input
-                    type="text"
                     value={customizations.primaryColor}
                     onChange={(e) => setCustomizations(prev => ({
                       ...prev,
                       primaryColor: e.target.value
                     }))}
+                    placeholder="#1e40af"
                     className="flex-1"
                   />
                 </div>
               </div>
-
+              
               <div className="space-y-2">
                 <Label>Secondary Color</Label>
                 <div className="flex items-center space-x-2">
@@ -485,20 +384,20 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
                       ...prev,
                       secondaryColor: e.target.value
                     }))}
-                    className="w-12 h-8 p-1 border rounded"
+                    className="w-16"
                   />
                   <Input
-                    type="text"
                     value={customizations.secondaryColor}
                     onChange={(e) => setCustomizations(prev => ({
                       ...prev,
                       secondaryColor: e.target.value
                     }))}
+                    placeholder="#3b82f6"
                     className="flex-1"
                   />
                 </div>
               </div>
-
+              
               <div className="space-y-2">
                 <Label>Accent Color</Label>
                 <div className="flex items-center space-x-2">
@@ -509,15 +408,15 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
                       ...prev,
                       accentColor: e.target.value
                     }))}
-                    className="w-12 h-8 p-1 border rounded"
+                    className="w-16"
                   />
                   <Input
-                    type="text"
                     value={customizations.accentColor}
                     onChange={(e) => setCustomizations(prev => ({
                       ...prev,
                       accentColor: e.target.value
                     }))}
+                    placeholder="#fbbf24"
                     className="flex-1"
                   />
                 </div>
@@ -532,10 +431,7 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
               </Label>
               <Select 
                 value={customizations.fontFamily} 
-                onValueChange={(value) => setCustomizations(prev => ({
-                  ...prev,
-                  fontFamily: value
-                }))}
+                onValueChange={(value) => setCustomizations(prev => ({ ...prev, fontFamily: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -550,7 +446,7 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
               </Select>
             </div>
 
-            {/* Background Image */}
+            {/* Background Image Upload */}
             <div className="space-y-2">
               <Label className="flex items-center">
                 <ImageIcon className="w-4 h-4 mr-2" />
@@ -561,23 +457,20 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
                 accept="image/*"
                 onChange={(e) => handleFileUpload('backgroundImage', e.target.files?.[0] || null)}
               />
-              {customizations.backgroundImage && (
-                <div className="space-y-2">
-                  <Label>Background Opacity: {Math.round(customizations.backgroundOpacity * 100)}%</Label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={customizations.backgroundOpacity}
-                    onChange={(e) => setCustomizations(prev => ({
-                      ...prev,
-                      backgroundOpacity: parseFloat(e.target.value)
-                    }))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                  />
-                </div>
-              )}
+            </div>
+
+            {/* Background Opacity */}
+            <div className="space-y-2">
+              <Label>Background Opacity: {Math.round(customizations.backgroundOpacity * 100)}%</Label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={customizations.backgroundOpacity}
+                onChange={(e) => setCustomizations(prev => ({ ...prev, backgroundOpacity: parseFloat(e.target.value) }))}
+                className="w-full"
+              />
             </div>
 
             {/* Live Preview with Selected Template */}

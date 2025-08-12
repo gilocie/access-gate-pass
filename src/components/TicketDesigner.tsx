@@ -23,7 +23,9 @@ import {
   Eye,
   Move,
   RotateCcw,
-  Trash2
+  Trash2,
+  Undo,
+  Redo
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,18 +61,19 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
   const canvasRef = useRef<HTMLDivElement>(null);
   const [elements, setElements] = useState<TicketElement[]>(initialTemplate?.elements || []);
   const [selectedElement, setSelectedElement] = useState<TicketElement | null>(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 605, height: 151 }); // 16cm x 4cm at 96 DPI
+  const [canvasSize, setCanvasSize] = useState({ width: 605, height: 151 });
   const [backgroundColor, setBackgroundColor] = useState('#1e293b');
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [backgroundGradient, setBackgroundGradient] = useState('');
-  const [backgroundOpacity, setBackgroundOpacity] = useState(1);
-  const [undoHistory, setUndoHistory] = useState<TicketElement[][]>([]);
-  const [redoHistory, setRedoHistory] = useState<TicketElement[][]>([]);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [backgroundOpacity, setBackgroundOpacity] = useState(80);
+  const [showGridSnap, setShowGridSnap] = useState(true);
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [showPreview, setShowPreview] = useState(false);
+  const [lastDesignState, setLastDesignState] = useState<any>(null);
 
   const elementTypes = [
     { type: 'text', icon: Type, label: 'Text' },
@@ -87,11 +90,41 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
     { type: 'circle', icon: Circle, label: 'Circle' },
   ];
 
+  useEffect(() => {
+    if (initialTemplate && initialTemplate.elements && initialTemplate.elements.length > 0) {
+      setElements(initialTemplate.elements);
+      // Initialize history with the initial state
+      const initialState = {
+        elements: initialTemplate.elements,
+        backgroundColor,
+        backgroundImage
+      };
+      setHistory([initialState]);
+      setHistoryIndex(0);
+    }
+  }, [initialTemplate, backgroundColor, backgroundImage]);
+
+  // Save design state when entering preview
+  const handlePreview = () => {
+    setLastDesignState({
+      elements,
+      backgroundColor,
+      backgroundImage
+    });
+    setShowPreview(true);
+  };
+
+  // Restore design state when returning from preview
+  const handleBackFromPreview = () => {
+    if (lastDesignState) {
+      setElements(lastDesignState.elements);
+      setBackgroundColor(lastDesignState.backgroundColor);
+      setBackgroundImage(lastDesignState.backgroundImage);
+    }
+    setShowPreview(false);
+  };
+
   const addElement = (type: TicketElement['type']) => {
-    // Save current state to undo history
-    setUndoHistory(prev => [...prev, elements]);
-    setRedoHistory([]);
-    
     const newElement: TicketElement = {
       id: `element-${Date.now()}`,
       type,
@@ -136,34 +169,34 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
   };
 
   const undo = () => {
-    if (undoHistory.length > 0) {
-      const previousState = undoHistory[undoHistory.length - 1];
-      setRedoHistory(prev => [...prev, elements]);
-      setElements(previousState);
-      setUndoHistory(prev => prev.slice(0, -1));
-      setSelectedElement(null);
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      setElements(history[historyIndex - 1].elements);
+      setBackgroundColor(history[historyIndex - 1].backgroundColor);
+      setBackgroundImage(history[historyIndex - 1].backgroundImage);
     }
   };
 
   const redo = () => {
-    if (redoHistory.length > 0) {
-      const nextState = redoHistory[redoHistory.length - 1];
-      setUndoHistory(prev => [...prev, elements]);
-      setElements(nextState);
-      setRedoHistory(prev => prev.slice(0, -1));
-      setSelectedElement(null);
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      setElements(history[historyIndex + 1].elements);
+      setBackgroundColor(history[historyIndex + 1].backgroundColor);
+      setBackgroundImage(history[historyIndex + 1].backgroundImage);
     }
   };
 
   const deleteElement = (id: string) => {
-    // Save current state to undo history
-    setUndoHistory(prev => [...prev, elements]);
-    setRedoHistory([]);
     setElements(prev => prev.filter(el => el.id !== id));
     setSelectedElement(null);
   };
 
-  const handleMouseDown = (e: React.MouseEvent, element: TicketElement) => {
+  const handleElementClick = (e: React.MouseEvent, element: TicketElement) => {
+    e.stopPropagation();
+    setSelectedElement(element);
+  };
+
+  const handleElementMouseDown = (e: React.MouseEvent, element: TicketElement) => {
     e.preventDefault();
     setSelectedElement(element);
     setIsDragging(true);
@@ -177,37 +210,16 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
     }
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging || !selectedElement || !canvasRef.current) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const newX = Math.max(0, Math.min(canvasSize.width - selectedElement.width, e.clientX - rect.left - dragOffset.x));
-    const newY = Math.max(0, Math.min(canvasSize.height - selectedElement.height, e.clientY - rect.top - dragOffset.y));
-
-    updateElement(selectedElement.id, { x: newX, y: newY });
-  }, [isDragging, selectedElement, canvasSize, dragOffset]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      setSelectedElement(null);
     }
+  };
 
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
-
-  const handleBackgroundImageUpload = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
+  const handleBackgroundImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     
-    // Upload to a public storage bucket or convert to base64
     const reader = new FileReader();
     reader.onload = () => {
       setBackgroundImage(reader.result as string);
@@ -215,7 +227,18 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
     reader.readAsDataURL(file);
   };
 
-  const saveTemplate = async () => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedElement) return;
+    
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateElement(selectedElement.id, { imageUrl: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
     if (!templateName || !templateCategory) {
       toast({
         variant: "destructive",
@@ -267,184 +290,200 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
     }
   };
 
-  const renderElement = (element: TicketElement) => {
-    const style = {
-      position: 'absolute' as const,
-      left: element.x,
-      top: element.y,
-      width: element.width,
-      height: element.height,
-      fontSize: element.fontSize,
-      fontFamily: element.fontFamily,
-      color: element.color,
-      backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
-      borderRadius: element.borderRadius,
-      textAlign: element.textAlign,
-      fontWeight: element.fontWeight,
-      transform: `rotate(${element.rotation || 0}deg)`,
-      cursor: 'move',
-      border: selectedElement?.id === element.id ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.3)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: element.textAlign === 'center' ? 'center' : element.textAlign === 'right' ? 'flex-end' : 'flex-start',
-      padding: '2px',
-      zIndex: selectedElement?.id === element.id ? 10 : 1,
-      boxSizing: 'border-box' as const
-    };
-
-    if (element.type === 'qr-code') {
-      return (
-        <div
-          key={element.id}
-          style={style}
-          onMouseDown={(e) => handleMouseDown(e, element)}
-        >
-          <div className="w-full h-full bg-white rounded-lg p-2 flex items-center justify-center">
-            <div className="w-full h-full grid grid-cols-8 gap-px">
-              {[...Array(64)].map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`bg-black ${
-                    [0,1,2,3,4,5,6,7,8,14,16,22,24,30,32,38,40,46,48,54,56,57,58,59,60,61,62,63].includes(i) ||
-                    Math.random() > 0.65 ? 'opacity-100' : 'opacity-0'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (element.type === 'logo') {
-      return (
-        <div
-          key={element.id}
-          style={style}
-          onMouseDown={(e) => handleMouseDown(e, element)}
-        >
-          <div 
-            className="w-full h-full rounded-lg flex items-center justify-center relative"
-            style={{ backgroundColor: element.backgroundColor || '#ffffff' }}
-          >
-            {element.imageUrl ? (
-              <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
-            ) : (
-              <>
-                <div className="text-xs font-bold text-gray-700">LOGO</div>
-                {selectedElement?.id === element.id && (
-                  <div className="absolute top-0 right-0">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            updateElement(element.id, { imageUrl: reader.result as string });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="absolute opacity-0 w-6 h-6 cursor-pointer"
-                    />
-                    <Upload className="w-4 h-4 text-blue-500 cursor-pointer" />
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    if (element.type === 'rectangle') {
-      return (
-        <div
-          key={element.id}
-          style={style}
-          onMouseDown={(e) => handleMouseDown(e, element)}
-        >
-          <div 
-            className="w-full h-full"
-            style={{ 
-              backgroundColor: element.backgroundColor || '#3b82f6',
-              borderRadius: element.borderRadius || 0
-            }}
-          />
-        </div>
-      );
-    }
-
-    if (element.type === 'circle') {
-      return (
-        <div
-          key={element.id}
-          style={style}
-          onMouseDown={(e) => handleMouseDown(e, element)}
-        >
-          <div 
-            className="w-full h-full rounded-full"
-            style={{ 
-              backgroundColor: element.backgroundColor || '#3b82f6'
-            }}
-          />
-        </div>
-      );
-    }
-
-    return (
-      <div
-        key={element.id}
-        style={style}
-        onMouseDown={(e) => handleMouseDown(e, element)}
-      >
-        {element.content}
-      </div>
-    );
-  };
-
   return (
     <div className="flex h-screen bg-background">
-      {/* Left Sidebar - Element Library */}
+      {/* Left Sidebar */}
       <div className="w-80 border-r bg-card p-4 overflow-y-auto">
         <div className="space-y-6">
-          {/* Canvas Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Canvas Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>Width (px)</Label>
-                  <Input
-                    type="number"
-                    value={canvasSize.width}
-                    onChange={(e) => setCanvasSize(prev => ({ ...prev, width: parseInt(e.target.value) }))}
-                  />
-                </div>
-                <div>
-                  <Label>Height (px)</Label>
-                  <Input
-                    type="number"
-                    value={canvasSize.height}
-                    onChange={(e) => setCanvasSize(prev => ({ ...prev, height: parseInt(e.target.value) }))}
-                  />
+          <div className="flex gap-2 mb-4">
+            <Button onClick={handleSave} className="bg-gradient-primary">
+              Save Template
+            </Button>
+            <Button variant="outline" onClick={showPreview ? handleBackFromPreview : handlePreview}>
+              {showPreview ? 'Back to Designer' : 'Preview'}
+            </Button>
+            <Button variant="outline" onClick={onBack}>
+              Cancel
+            </Button>
+            <Button variant="outline" onClick={undo} disabled={historyIndex <= 0}>
+              <Undo className="w-4 h-4 mr-2" />
+              Undo
+            </Button>
+            <Button variant="outline" onClick={redo} disabled={historyIndex >= history.length - 1}>
+              <Redo className="w-4 h-4 mr-2" />
+              Redo
+            </Button>
+          </div>
+
+          {/* Canvas */}
+          <div className="flex-1">
+            {showPreview ? (
+              <div className="flex items-center justify-center h-full">
+                <div 
+                  className="border shadow-lg"
+                  style={{ 
+                    width: canvasSize.width, 
+                    height: canvasSize.height,
+                    backgroundColor,
+                    backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    position: 'relative'
+                  }}
+                >
+                  {elements.map((element) => (
+                    <div
+                      key={element.id}
+                      style={{
+                        position: 'absolute',
+                        left: element.x,
+                        top: element.y,
+                        width: element.width,
+                        height: element.height,
+                        fontSize: element.fontSize,
+                        fontFamily: element.fontFamily,
+                        color: element.color,
+                        backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
+                        borderRadius: element.borderRadius,
+                        textAlign: element.textAlign,
+                        fontWeight: element.fontWeight,
+                        transform: `rotate(${element.rotation || 0}deg)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: element.textAlign === 'center' ? 'center' : element.textAlign === 'right' ? 'flex-end' : 'flex-start',
+                        padding: '4px',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {element.type === 'qr-code' ? (
+                        <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
+                          <div className="w-full h-full grid grid-cols-6 gap-px">
+                            {[...Array(36)].map((_, i) => (
+                              <div 
+                                key={i} 
+                                className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : element.type === 'logo' ? (
+                        element.imageUrl ? (
+                          <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                        ) : (
+                          <ImageIcon className="w-6 h-6 text-gray-400" />
+                        )
+                      ) : element.type === 'benefits' ? (
+                        <span>0/3 Used</span>
+                      ) : (
+                        <span>{element.content}</span>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div>
-                <Label>Background Type</Label>
-                <Select value={backgroundGradient ? 'gradient' : 'solid'} onValueChange={(value) => {
-                  if (value === 'solid') {
-                    setBackgroundGradient('');
-                  } else {
-                    setBackgroundGradient('linear-gradient(135deg, #3b82f6, #1e40af)');
-                  }
-                }}>
-                  <SelectTrigger>
-                    <SelectValue />
+            ) : (
+              <div 
+                className="relative border-2 border-dashed border-muted-foreground/30 mx-auto"
+                style={{ 
+                  width: canvasSize.width, 
+                  height: canvasSize.height,
+                  backgroundColor,
+                  backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+                onClick={handleCanvasClick}
+              >
+                {elements.map((element) => (
+                  <div
+                    key={element.id}
+                    className={`absolute cursor-move group ${
+                      selectedElement?.id === element.id ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'
+                    }`}
+                    style={{
+                      left: element.x,
+                      top: element.y,
+                      width: element.width,
+                      height: element.height,
+                      fontSize: element.fontSize,
+                      fontFamily: element.fontFamily,
+                      color: element.color,
+                      backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
+                      borderRadius: element.borderRadius,
+                      textAlign: element.textAlign,
+                      fontWeight: element.fontWeight,
+                      transform: `rotate(${element.rotation || 0}deg)`,
+                      transformOrigin: 'center'
+                    }}
+                    onClick={(e) => handleElementClick(e, element)}
+                    onMouseDown={(e) => handleElementMouseDown(e, element)}
+                  >
+                    <div className="flex items-center justify-center h-full w-full p-1 overflow-hidden">
+                      {element.type === 'qr-code' ? (
+                        <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
+                          <div className="w-full h-full grid grid-cols-6 gap-px">
+                            {[...Array(36)].map((_, i) => (
+                              <div 
+                                key={i} 
+                                className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : element.type === 'logo' ? (
+                        element.imageUrl ? (
+                          <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                        ) : (
+                          <ImageIcon className="w-6 h-6 text-gray-400" />
+                        )
+                      ) : element.type === 'benefits' ? (
+                        <span className="text-center font-semibold">0/3 Used</span>
+                      ) : (
+                        <span className="text-center break-words">{element.content}</span>
+                      )}
+                    </div>
+                    
+                    {/* Resize handles */}
+                    {selectedElement?.id === element.id && (
+                      <>
+                        <div 
+                          className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-white cursor-se-resize"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            // Add resize functionality here
+                          }}
+                        />
+                        <div 
+                          className="absolute -top-1 -right-1 w-3 h-3 bg-primary border border-white cursor-ne-resize"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            // Add resize functionality here
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Canvas Settings */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Canvas Settings</h3>
+            
+            <div className="space-y-2">
+              <Label>Background Color</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="color"
+                  value={backgroundColor}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  className="w-20"
+                />
+                <Select value="solid" onValueChange={(value) => {}}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Background Type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="solid">Solid Color</SelectItem>
@@ -452,410 +491,199 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
                   </SelectContent>
                 </Select>
               </div>
-              
-              {!backgroundGradient ? (
-                <div>
-                  <Label>Background Color</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="color"
-                      value={backgroundColor}
-                      onChange={(e) => setBackgroundColor(e.target.value)}
-                      className="w-16"
-                    />
-                    <Input
-                      value={backgroundColor}
-                      onChange={(e) => setBackgroundColor(e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <Label>Gradient Colors</Label>
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <Input type="color" className="w-16" placeholder="Start color" />
-                      <Input type="color" className="w-16" placeholder="End color" />
-                    </div>
-                    <Select defaultValue="linear">
-                      <SelectTrigger>
-                        <SelectValue placeholder="Gradient type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="linear">Linear</SelectItem>
-                        <SelectItem value="radial">Radial</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-              
-              <div>
-                <Label>Background Image Opacity: {Math.round(backgroundOpacity * 100)}%</Label>
-                <Slider
-                  value={[backgroundOpacity]}
-                  onValueChange={(value) => setBackgroundOpacity(value[0])}
-                  max={1}
-                  min={0}
-                  step={0.1}
-                  className="w-full"
-                />
-              </div>
-              
-              <div>
-                <Label>Background Image Upload</Label>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Gradient Colors (if gradient selected)</Label>
+              <div className="flex gap-2">
                 <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleBackgroundImageUpload(file);
-                  }}
+                  type="color"
+                  value={backgroundColor}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  className="w-20"
+                  placeholder="Start"
                 />
-                {backgroundImage && (
-                  <p className="text-xs text-muted-foreground mt-1">Image uploaded successfully</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Element Library */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Element Library</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-2">
-                {elementTypes.map((elementType) => {
-                  const Icon = elementType.icon;
-                  return (
-                    <Button
-                      key={elementType.type}
-                      variant="outline"
-                      className="h-auto p-3 flex flex-col items-center gap-2"
-                      onClick={() => addElement(elementType.type as TicketElement['type'])}
-                    >
-                      <Icon className="w-5 h-5" />
-                      <span className="text-xs">{elementType.label}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Template Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Template Info</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Template Name</Label>
                 <Input
-                  value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
-                  placeholder="Enter template name"
+                  type="color"
+                  value="#3b82f6"
+                  onChange={() => {}}
+                  className="w-20"
+                  placeholder="End"
                 />
               </div>
-              <div>
-                <Label>Category</Label>
-                <Select value={templateCategory} onValueChange={setTemplateCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="business">Business</SelectItem>
-                    <SelectItem value="technology">Technology</SelectItem>
-                    <SelectItem value="entertainment">Entertainment</SelectItem>
-                    <SelectItem value="sports">Sports</SelectItem>
-                    <SelectItem value="education">Education</SelectItem>
-                    <SelectItem value="wedding">Wedding</SelectItem>
-                    <SelectItem value="party">Party</SelectItem>
-                    <SelectItem value="formal">Formal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            </div>
 
-      {/* Center - Canvas */}
-      <div className="flex-1 p-6 overflow-auto">
-        <div className="flex flex-col items-center">
-          <div className="mb-4 flex gap-4">
-            <Button onClick={onBack} variant="outline">
-              Back
-            </Button>
-            <Button onClick={undo} variant="outline" disabled={undoHistory.length === 0}>
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Undo
-            </Button>
-            <Button onClick={redo} variant="outline" disabled={redoHistory.length === 0}>
-              <RotateCcw className="w-4 h-4 mr-2 scale-x-[-1]" />
-              Redo
-            </Button>
-            <Button onClick={() => onPreview(elements, canvasSize)} variant="outline">
-              <Eye className="w-4 h-4 mr-2" />
-              Preview
-            </Button>
-            <Button onClick={saveTemplate} className="bg-gradient-primary hover:opacity-90">
-              <Save className="w-4 h-4 mr-2" />
-              Save Template
-            </Button>
-          </div>
-
-          <div
-            ref={canvasRef}
-            className="relative border-2 border-dashed border-gray-300 bg-white shadow-lg"
-            style={{
-              width: canvasSize.width,
-              height: canvasSize.height,
-              background: backgroundGradient || backgroundColor,
-              position: 'relative'
-            }}
-          >
-            {backgroundImage && (
-              <div 
-                className="absolute inset-0 bg-cover bg-center"
-                style={{
-                  backgroundImage: `url(${backgroundImage})`,
-                  opacity: backgroundOpacity,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
+            <div className="space-y-2">
+              <Label>Background Image</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleBackgroundImageUpload}
               />
-            )}
-            {elements.map(renderElement)}
-            
-            {elements.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                Drag elements from the left panel to start designing
+              {backgroundImage && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBackgroundImage(null)}
+                >
+                  Remove Image
+                </Button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Background Opacity ({backgroundOpacity}%)</Label>
+              <Slider
+                value={[backgroundOpacity]}
+                onValueChange={(value) => setBackgroundOpacity(value[0])}
+                max={100}
+                min={0}
+                step={1}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Add Shapes</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addElement('rectangle')}
+                >
+                  Rectangle
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addElement('circle')}
+                >
+                  Circle
+                </Button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Right Sidebar - Element Properties */}
+      {/* Right Sidebar */}
       <div className="w-80 border-l bg-card p-4 overflow-y-auto">
-        {selectedElement ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center justify-between">
-                Element Properties
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => deleteElement(selectedElement.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Position & Size */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>X Position</Label>
-                  <Input
-                    type="number"
-                    value={selectedElement.x}
-                    onChange={(e) => updateElement(selectedElement.id, { x: parseInt(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <Label>Y Position</Label>
-                  <Input
-                    type="number"
-                    value={selectedElement.y}
-                    onChange={(e) => updateElement(selectedElement.id, { y: parseInt(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <Label>Width</Label>
-                  <Input
-                    type="number"
-                    value={selectedElement.width}
-                    onChange={(e) => updateElement(selectedElement.id, { width: parseInt(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <Label>Height</Label>
-                  <Input
-                    type="number"
-                    value={selectedElement.height}
-                    onChange={(e) => updateElement(selectedElement.id, { height: parseInt(e.target.value) })}
-                  />
-                </div>
-              </div>
+        <div className="space-y-6">
+          {/* Element Library */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Elements</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {elementTypes.map((elementType) => {
+                const Icon = elementType.icon;
+                return (
+                  <Button
+                    key={elementType.type}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addElement(elementType.type as TicketElement['type'])}
+                    className="flex flex-col items-center gap-1"
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="text-xs">{elementType.label}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
 
-              {/* Text Properties */}
-              {selectedElement.type !== 'qr-code' && selectedElement.type !== 'logo' && (
-                <>
-                  <div>
-                    <Label>Content</Label>
-                    <Textarea
-                      value={selectedElement.content}
-                      onChange={(e) => updateElement(selectedElement.id, { content: e.target.value })}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>Font Size</Label>
-                    <Slider
-                      value={[selectedElement.fontSize || 16]}
-                      onValueChange={(value) => updateElement(selectedElement.id, { fontSize: value[0] })}
-                      min={8}
-                      max={72}
-                      step={1}
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Font Family</Label>
-                    <Select 
-                      value={selectedElement.fontFamily} 
-                      onValueChange={(value) => updateElement(selectedElement.id, { fontFamily: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Arial">Arial</SelectItem>
-                        <SelectItem value="Georgia">Georgia</SelectItem>
-                        <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                        <SelectItem value="Helvetica">Helvetica</SelectItem>
-                        <SelectItem value="Verdana">Verdana</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>Text Color</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="color"
-                        value={selectedElement.color}
-                        onChange={(e) => updateElement(selectedElement.id, { color: e.target.value })}
-                        className="w-16"
-                      />
-                      <Input
-                        value={selectedElement.color}
-                        onChange={(e) => updateElement(selectedElement.id, { color: e.target.value })}
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label>Text Align</Label>
-                    <Select 
-                      value={selectedElement.textAlign} 
-                      onValueChange={(value) => updateElement(selectedElement.id, { textAlign: value as 'left' | 'center' | 'right' })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="left">Left</SelectItem>
-                        <SelectItem value="center">Center</SelectItem>
-                        <SelectItem value="right">Right</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>Font Weight</Label>
-                    <Select 
-                      value={selectedElement.fontWeight} 
-                      onValueChange={(value) => updateElement(selectedElement.id, { fontWeight: value as 'normal' | 'bold' })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="bold">Bold</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
-
-              {/* Logo Image Upload */}
+          {/* Element Settings */}
+          {selectedElement && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Element Settings</h3>
+              
               {selectedElement.type === 'logo' && (
-                <div>
-                  <Label>Logo Image</Label>
+                <div className="space-y-2">
+                  <Label>Logo Upload</Label>
                   <Input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          updateElement(selectedElement.id, { imageUrl: reader.result as string });
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
+                    onChange={handleImageUpload}
+                    className="mb-2"
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Or paste image URL"
+                    value={selectedElement.imageUrl || ''}
+                    onChange={(e) => updateElement(selectedElement.id, { imageUrl: e.target.value })}
+                  />
+                  <div className="space-y-2">
+                    <Label>Background Color</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={selectedElement.backgroundColor || '#ffffff'}
+                        onChange={(e) => updateElement(selectedElement.id, { backgroundColor: e.target.value })}
+                        className="w-20"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateElement(selectedElement.id, { backgroundColor: 'transparent' })}
+                      >
+                        Transparent
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedElement.type !== 'qr-code' && selectedElement.type !== 'logo' && (
+                <div className="space-y-2">
+                  <Label>Content</Label>
+                  <Textarea
+                    placeholder="Enter text content"
+                    value={selectedElement.content || ''}
+                    onChange={(e) => updateElement(selectedElement.id, { content: e.target.value })}
                   />
                 </div>
               )}
 
-              {/* Background Color */}
-              <div>
-                <Label>Background Color</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="color"
-                    value={selectedElement.backgroundColor === 'transparent' ? '#ffffff' : selectedElement.backgroundColor}
-                    onChange={(e) => updateElement(selectedElement.id, { backgroundColor: e.target.value })}
-                    className="w-16"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => updateElement(selectedElement.id, { backgroundColor: 'transparent' })}
-                  >
-                    Transparent
-                  </Button>
+              {selectedElement.type === 'benefits' && (
+                <div className="space-y-2">
+                  <Label>Benefits Display Format</Label>
+                  <p className="text-sm text-muted-foreground">
+                    This element will automatically show "X/Y used" where X is used benefits and Y is total benefits.
+                  </p>
                 </div>
-              </div>
+              )}
+            </div>
+          )}
 
-              {/* Border Radius */}
-              <div>
-                <Label>Border Radius</Label>
-                <Slider
-                  value={[selectedElement.borderRadius || 0]}
-                  onValueChange={(value) => updateElement(selectedElement.id, { borderRadius: value[0] })}
-                  min={0}
-                  max={50}
-                  step={1}
-                />
-              </div>
-
-              {/* Rotation */}
-              <div>
-                <Label>Rotation (degrees)</Label>
-                <Slider
-                  value={[selectedElement.rotation || 0]}
-                  onValueChange={(value) => updateElement(selectedElement.id, { rotation: value[0] })}
-                  min={-180}
-                  max={180}
-                  step={1}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="text-center text-muted-foreground mt-8">
-            Select an element to edit its properties
+          {/* Template Info */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Template Info</h3>
+            <div className="space-y-2">
+              <Label>Template Name</Label>
+              <Input
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="Enter template name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={templateCategory} onValueChange={setTemplateCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="business">Business</SelectItem>
+                  <SelectItem value="technology">Technology</SelectItem>
+                  <SelectItem value="entertainment">Entertainment</SelectItem>
+                  <SelectItem value="sports">Sports</SelectItem>
+                  <SelectItem value="education">Education</SelectItem>
+                  <SelectItem value="wedding">Wedding</SelectItem>
+                  <SelectItem value="party">Party</SelectItem>
+                  <SelectItem value="formal">Formal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

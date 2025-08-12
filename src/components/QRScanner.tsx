@@ -304,29 +304,24 @@ const QRScanner: React.FC<QRScannerProps> = ({ isOpen, onClose, eventId }) => {
 
                     {ticketData?.selected_benefits && ticketData.selected_benefits.length > 0 && (
                       <div>
-                        <Label className="text-sm font-medium mb-2 block">Selected Benefits</Label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <Label className="text-sm font-medium mb-2 block">Benefits Management</Label>
+                        <div className="space-y-2">
                           {ticketData.selected_benefits.map((benefit, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 border rounded">
-                              <span className="text-sm">{benefit}</span>
-                              <div className="flex gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => updateTicketStatus(index, false)}
-                                >
-                                  Deactivate
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => updateTicketStatus(index, true)}
-                                >
-                                  Activate
-                                </Button>
-                              </div>
+                            <div key={index} className="flex items-center justify-between p-3 border rounded">
+                              <span className="text-sm font-medium">{benefit}</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateTicketStatus(index, true)}
+                              >
+                                Mark as Used
+                              </Button>
                             </div>
                           ))}
                         </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          PIN code is hidden for security. Staff can mark benefits as used without seeing the PIN.
+                        </p>
                       </div>
                     )}
 
