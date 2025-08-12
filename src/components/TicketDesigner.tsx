@@ -74,7 +74,10 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showPreview, setShowPreview] = useState(false);
   const [lastDesignState, setLastDesignState] = useState<any>(null);
-
+  // Resize/drag state
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState<'n'|'s'|'e'|'w'|'ne'|'nw'|'se'|'sw'|null>(null);
+  const resizeStart = useRef<{ mouseX: number; mouseY: number; startX: number; startY: number; startW: number; startH: number; id: string } | null>(null);
   // Push changes to history for undo/redo (up to first action)
   useEffect(() => {
     if (showPreview) return;
@@ -153,14 +156,14 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
       type,
       x: 50,
       y: 50,
-      width: type === 'qr-code' ? 113 : 
-             type === 'logo' ? 120 : 
-             type === 'rectangle' ? 150 : 
-             type === 'circle' ? 100 : 200,
-      height: type === 'qr-code' ? 113 : 
-              type === 'logo' ? 80 : 
-              type === 'rectangle' ? 100 : 
-              type === 'circle' ? 100 : 40,
+      width: type === 'qr-code' ? 96 : 
+             type === 'logo' ? 96 : 
+             type === 'rectangle' ? 120 : 
+             type === 'circle' ? 80 : 150,
+      height: type === 'qr-code' ? 96 : 
+              type === 'logo' ? 64 : 
+              type === 'rectangle' ? 60 : 
+              type === 'circle' ? 80 : 32,
       content: type === 'text' ? 'Sample Text' : 
                type === 'event-name' ? 'EVENT NAME' :
                type === 'user-name' ? 'USER NAME' :
@@ -169,7 +172,7 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
                type === 'remaining-days' ? '6 Days' :
                type === 'pin-code' ? '123456' :
                '',
-      fontSize: type === 'event-name' ? 28 : 16,
+      fontSize: type === 'event-name' ? 22 : 14,
       fontFamily: 'Arial',
       color: type === 'event-name' ? '#FFD700' : 
              type === 'rectangle' || type === 'circle' ? 'transparent' : '#FFFFFF',
@@ -233,12 +236,91 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
     }
   };
 
+  const startResize = (
+    handle: typeof resizeHandle,
+    element: TicketElement,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation();
+    setSelectedElement(element);
+    setIsResizing(true);
+    setResizeHandle(handle);
+    resizeStart.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      startX: element.x,
+      startY: element.y,
+      startW: element.width,
+      startH: element.height,
+      id: element.id,
+    };
+  };
+
+  const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      if (isDragging && selectedElement) {
+        const newX = clamp(e.clientX - rect.left - dragOffset.x, 0, canvasSize.width - selectedElement.width);
+        const newY = clamp(e.clientY - rect.top - dragOffset.y, 0, canvasSize.height - selectedElement.height);
+        updateElement(selectedElement.id, { x: newX, y: newY });
+      } else if (isResizing && resizeStart.current && selectedElement) {
+        const dx = e.clientX - resizeStart.current.mouseX;
+        const dy = e.clientY - resizeStart.current.mouseY;
+
+        let newW = resizeStart.current.startW;
+        let newH = resizeStart.current.startH;
+        let newX = resizeStart.current.startX;
+        let newY = resizeStart.current.startY;
+
+        switch (resizeHandle) {
+          case 'se': newW += dx; newH += dy; break;
+          case 'ne': newW += dx; newH -= dy; newY += dy; break;
+          case 'sw': newW -= dx; newH += dy; newX += dx; break;
+          case 'nw': newW -= dx; newH -= dy; newX += dx; newY += dy; break;
+          case 'e': newW += dx; break;
+          case 'w': newW -= dx; newX += dx; break;
+          case 's': newH += dy; break;
+          case 'n': newH -= dy; newY += dy; break;
+        }
+
+        const minW = 24;
+        const minH = 24;
+        newW = Math.max(minW, newW);
+        newH = Math.max(minH, newH);
+
+        newX = clamp(newX, 0, canvasSize.width - newW);
+        newY = clamp(newY, 0, canvasSize.height - newH);
+        newW = clamp(newW, minW, canvasSize.width - newX);
+        newH = clamp(newH, minH, canvasSize.height - newY);
+
+        updateElement(selectedElement.id, { x: newX, y: newY, width: newW, height: newH });
+      }
+    };
+
+    const onMouseUp = () => {
+      setIsDragging(false);
+      setIsResizing(false);
+      setResizeHandle(null);
+      resizeStart.current = null;
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [isDragging, isResizing, selectedElement, dragOffset.x, dragOffset.y, canvasSize.width, canvasSize.height]);
+
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       setSelectedElement(null);
     }
   };
-
   const handleBackgroundImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -513,7 +595,8 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
                 backgroundColor,
                 backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
                 backgroundSize: 'cover',
-                backgroundPosition: 'center'
+                backgroundPosition: 'center',
+                overflow: 'hidden'
               }}
               onClick={handleCanvasClick}
             >
@@ -570,19 +653,39 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
                   {/* Resize handles */}
                   {selectedElement?.id === element.id && (
                     <>
-                      <div 
-                        className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-white cursor-se-resize"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          // Add resize functionality here
-                        }}
+                      {/* corners */}
+                      <div
+                        className="absolute -top-1 -left-1 w-3 h-3 bg-primary border border-white cursor-nw-resize"
+                        onMouseDown={(e) => startResize('nw', element, e)}
                       />
-                      <div 
+                      <div
                         className="absolute -top-1 -right-1 w-3 h-3 bg-primary border border-white cursor-ne-resize"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          // Add resize functionality here
-                        }}
+                        onMouseDown={(e) => startResize('ne', element, e)}
+                      />
+                      <div
+                        className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary border border-white cursor-sw-resize"
+                        onMouseDown={(e) => startResize('sw', element, e)}
+                      />
+                      <div
+                        className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-white cursor-se-resize"
+                        onMouseDown={(e) => startResize('se', element, e)}
+                      />
+                      {/* edges */}
+                      <div
+                        className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary border border-white cursor-n-resize"
+                        onMouseDown={(e) => startResize('n', element, e)}
+                      />
+                      <div
+                        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary border border-white cursor-s-resize"
+                        onMouseDown={(e) => startResize('s', element, e)}
+                      />
+                      <div
+                        className="absolute top-1/2 -left-1 -translate-y-1/2 w-3 h-3 bg-primary border border-white cursor-w-resize"
+                        onMouseDown={(e) => startResize('w', element, e)}
+                      />
+                      <div
+                        className="absolute top-1/2 -right-1 -translate-y-1/2 w-3 h-3 bg-primary border border-white cursor-e-resize"
+                        onMouseDown={(e) => startResize('e', element, e)}
                       />
                     </>
                   )}
