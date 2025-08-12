@@ -75,6 +75,16 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
   const [showPreview, setShowPreview] = useState(false);
   const [lastDesignState, setLastDesignState] = useState<any>(null);
 
+  // Push changes to history for undo/redo (up to first action)
+  useEffect(() => {
+    if (showPreview) return;
+    const current = { elements, backgroundColor, backgroundImage };
+    const last = history[historyIndex];
+    if (last && JSON.stringify(last) === JSON.stringify(current)) return;
+    setHistory(prev => [...prev.slice(0, historyIndex + 1), current]);
+    setHistoryIndex(prev => prev + 1);
+  }, [elements, backgroundColor, backgroundImage]);
+
   const elementTypes = [
     { type: 'text', icon: Type, label: 'Text' },
     { type: 'qr-code', icon: QrCode, label: 'QR Code' },
@@ -331,6 +341,7 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
                     position: 'relative'
                   }}
                 >
+                  <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0, ${(100 - backgroundOpacity) / 100})` }} />
                   {elements.map((element) => (
                     <div
                       key={element.id}
@@ -394,6 +405,7 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
                 }}
                 onClick={handleCanvasClick}
               >
+                <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: `rgba(0,0,0, ${(100 - backgroundOpacity) / 100})` }} />
                 {elements.map((element) => (
                   <div
                     key={element.id}

@@ -485,7 +485,17 @@ const TicketGenerator: React.FC<TicketGeneratorProps> = ({ isOpen, onClose, even
           logoImg.onload = resolve;
           logoImg.src = element.imageUrl;
         });
-        ctx.drawImage(logoImg, element.x, element.y, element.width, element.height);
+        // Draw logo preserving aspect ratio inside the element box
+        const iw = logoImg.width;
+        const ih = logoImg.height;
+        const boxW = element.width;
+        const boxH = element.height;
+        const scale = Math.min(boxW / iw, boxH / ih);
+        const drawW = iw * scale;
+        const drawH = ih * scale;
+        const dx = element.x + (boxW - drawW) / 2;
+        const dy = element.y + (boxH - drawH) / 2;
+        ctx.drawImage(logoImg, dx, dy, drawW, drawH);
       } else {
         // Text elements
         if (element.backgroundColor && element.backgroundColor !== 'transparent') {

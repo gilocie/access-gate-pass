@@ -46,6 +46,7 @@ const TicketView: React.FC = () => {
   const [showPinVerification, setShowPinVerification] = useState(false);
   const [selectedBenefit, setSelectedBenefit] = useState<string>('');
   const [usedBenefits, setUsedBenefits] = useState<string[]>([]);
+  const [newBenefits, setNewBenefits] = useState<string[]>([]);
 
   const pinCode = searchParams.get('pinCode');
   const eventId = searchParams.get('eventId');
@@ -202,6 +203,23 @@ const TicketView: React.FC = () => {
     setShowPinVerification(true);
   };
 
+  const addBenefitsToTicket = async () => {
+    if (!ticket || !event) return;
+    try {
+      const updated = Array.from(new Set([...(ticket.selected_benefits || []), ...newBenefits]));
+      const { error } = await supabase
+        .from('event_tickets')
+        .update({ selected_benefits: updated })
+        .eq('id', ticket.id);
+      if (error) throw error;
+      setTicket(prev => prev ? { ...prev, selected_benefits: updated } : null);
+      setNewBenefits([]);
+      toast({ title: 'Benefits Updated', description: 'Benefits added to this ticket.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -318,7 +336,30 @@ const TicketView: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {ticket.selected_benefits.length === 0 ? (
-                <p className="text-muted-foreground">No benefits selected for this ticket.</p>
+                event.available_benefits && event.available_benefits.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-muted-foreground">No benefits selected. Add benefits for this ticket:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {event.available_benefits.map((benefit) => (
+                        <div key={benefit} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`add-${benefit}`}
+                            checked={newBenefits.includes(benefit)}
+                            onCheckedChange={(checked) => {
+                              setNewBenefits(prev => checked ? [...prev, benefit] : prev.filter(b => b !== benefit));
+                            }}
+                          />
+                          <Label htmlFor={`add-${benefit}`} className="text-sm">{benefit}</Label>
+                        </div>
+                      ))}
+                    </div>
+                    <Button size="sm" disabled={newBenefits.length === 0} onClick={addBenefitsToTicket}>
+                      Add Selected Benefits
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No benefits configured for this event.</p>
+                )
               ) : (
                 <div className="space-y-3">
                   {ticket.selected_benefits.map((benefit) => {

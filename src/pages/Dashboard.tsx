@@ -217,7 +217,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
       
       <div className="pt-24 pb-16">
@@ -334,7 +334,7 @@ const Dashboard = () => {
                   {events.map((event) => (
                     <Card 
                       key={event.id} 
-                      className={`cursor-pointer transition-all hover:shadow-lg ${
+                      className={`cursor-pointer transition-all hover:shadow-lg overflow-hidden ${
                         selectedEvent?.id === event.id 
                           ? 'bg-gradient-primary text-white ring-2 ring-primary-dark' 
                           : 'hover:shadow-md'

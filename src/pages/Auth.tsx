@@ -31,6 +31,13 @@ const Auth = () => {
     confirmPassword: ''
   });
 
+  // Redirect authenticated users away from auth page
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard');
+    }
+  }, [user, loading, navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);

@@ -8,12 +8,14 @@ interface TicketDesignerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTemplateCreated: (template: any) => void;
+  initialTemplate?: any;
 }
 
 const TicketDesignerModal: React.FC<TicketDesignerModalProps> = ({ 
   isOpen, 
   onClose, 
-  onTemplateCreated 
+  onTemplateCreated,
+  initialTemplate
 }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
@@ -122,6 +124,7 @@ const TicketDesignerModal: React.FC<TicketDesignerModalProps> = ({
           onSave={handleSave}
           onPreview={handlePreview}
           onBack={onClose}
+          initialTemplate={initialTemplate}
         />
       </DialogContent>
     </Dialog>

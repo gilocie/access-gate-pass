@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, Palette, Type, Image as ImageIcon, Plus } from 'lucide-react';
+import { Upload, Palette, Type, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import TicketDesignerModal from './TicketDesignerModal';
 
@@ -102,6 +102,7 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
     backgroundImage: null as File | null,
     backgroundOpacity: 0.3
   });
+  const [templateToRedesign, setTemplateToRedesign] = useState<any | null>(null);
 
   useEffect(() => {
     loadCustomTemplates();
@@ -283,23 +284,8 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
                           variant="outline"
                           onClick={(e) => {
                             e.stopPropagation();
-                            // Add redesign functionality
-                            onTemplateSelect({
-                              id: template.id,
-                              name: template.name,
-                              category: template.category,
-                              preview: '',
-                              colors: { primary: '#1e293b', secondary: '#3b82f6', accent: '#fbbf24' },
-                              customizations: {
-                                elements: template.elements,
-                                canvasSize: { width: template.canvas_width, height: template.canvas_height },
-                                backgroundColor: template.background_color,
-                                backgroundImage: template.background_image_url,
-                                isCustomTemplate: true,
-                                customTemplateId: template.id,
-                                redesignMode: true
-                              }
-                            });
+                            setTemplateToRedesign(template);
+                            setShowDesigner(true);
                           }}
                         >
                           Redesign
@@ -313,7 +299,7 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
                             deleteCustomTemplate(template.id);
                           }}
                         >
-                          🗑️
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
@@ -325,277 +311,6 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
         </div>
       )}
 
-      {/* Template Customization Panel for built-in templates */}
-      {selectedTemplate && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center text-lg">
-              <Palette className="w-5 h-5 mr-2" />
-              Customize Template
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Logo Upload */}
-            <div className="space-y-2">
-              <Label className="flex items-center">
-                <Upload className="w-4 h-4 mr-2" />
-                Logo Upload
-              </Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleFileUpload('logo', e.target.files?.[0] || null)}
-              />
-            </div>
-
-            {/* Color Customization */}
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Primary Color</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    type="color"
-                    value={customizations.primaryColor}
-                    onChange={(e) => setCustomizations(prev => ({
-                      ...prev,
-                      primaryColor: e.target.value
-                    }))}
-                    className="w-16"
-                  />
-                  <Input
-                    value={customizations.primaryColor}
-                    onChange={(e) => setCustomizations(prev => ({
-                      ...prev,
-                      primaryColor: e.target.value
-                    }))}
-                    placeholder="#1e40af"
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Secondary Color</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    type="color"
-                    value={customizations.secondaryColor}
-                    onChange={(e) => setCustomizations(prev => ({
-                      ...prev,
-                      secondaryColor: e.target.value
-                    }))}
-                    className="w-16"
-                  />
-                  <Input
-                    value={customizations.secondaryColor}
-                    onChange={(e) => setCustomizations(prev => ({
-                      ...prev,
-                      secondaryColor: e.target.value
-                    }))}
-                    placeholder="#3b82f6"
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Accent Color</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    type="color"
-                    value={customizations.accentColor}
-                    onChange={(e) => setCustomizations(prev => ({
-                      ...prev,
-                      accentColor: e.target.value
-                    }))}
-                    className="w-16"
-                  />
-                  <Input
-                    value={customizations.accentColor}
-                    onChange={(e) => setCustomizations(prev => ({
-                      ...prev,
-                      accentColor: e.target.value
-                    }))}
-                    placeholder="#fbbf24"
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Font Selection */}
-            <div className="space-y-2">
-              <Label className="flex items-center">
-                <Type className="w-4 h-4 mr-2" />
-                Font Family
-              </Label>
-              <Select 
-                value={customizations.fontFamily} 
-                onValueChange={(value) => setCustomizations(prev => ({ ...prev, fontFamily: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Arial">Arial</SelectItem>
-                  <SelectItem value="Georgia">Georgia</SelectItem>
-                  <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                  <SelectItem value="Helvetica">Helvetica</SelectItem>
-                  <SelectItem value="Verdana">Verdana</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Background Image Upload */}
-            <div className="space-y-2">
-              <Label className="flex items-center">
-                <ImageIcon className="w-4 h-4 mr-2" />
-                Background Image (Optional)
-              </Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleFileUpload('backgroundImage', e.target.files?.[0] || null)}
-              />
-            </div>
-
-            {/* Background Opacity */}
-            <div className="space-y-2">
-              <Label>Background Opacity: {Math.round(customizations.backgroundOpacity * 100)}%</Label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={customizations.backgroundOpacity}
-                onChange={(e) => setCustomizations(prev => ({ ...prev, backgroundOpacity: parseFloat(e.target.value) }))}
-                className="w-full"
-              />
-            </div>
-
-            {/* Live Preview with Selected Template */}
-            <div className="space-y-2">
-              <Label>Live Template Preview</Label>
-              <div 
-                className="h-48 rounded-lg relative overflow-hidden"
-                style={{
-                  background: `linear-gradient(135deg, ${customizations.primaryColor}, ${customizations.secondaryColor})`,
-                  fontFamily: customizations.fontFamily
-                }}
-              >
-                {/* Background overlay */}
-                <div className="absolute inset-0 bg-black/30"></div>
-                
-                {/* Logo area */}
-                <div className="absolute top-4 left-4 bg-white/90 rounded-lg p-2 w-20 h-16 flex items-center justify-center">
-                  <div className="text-xs font-bold text-gray-700">LOGO</div>
-                </div>
-                
-                {/* Event name */}
-                <div className="absolute top-6 left-28 right-24">
-                  <div 
-                    className="text-2xl font-bold tracking-wider"
-                    style={{ color: customizations.accentColor }}
-                  >
-                    EVENT NAME
-                  </div>
-                  <div className="text-white text-sm mt-1">
-                    TICKET USER NAME
-                  </div>
-                </div>
-                
-                {/* Date section */}
-                <div className="absolute bottom-20 left-6 flex items-center gap-3">
-                  <div 
-                    className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center border-2"
-                    style={{ borderColor: customizations.accentColor }}
-                  >
-                    <div 
-                      className="font-bold text-lg"
-                      style={{ color: customizations.accentColor }}
-                    >
-                      04
-                    </div>
-                    <div className="text-white text-xs">AUG</div>
-                    <div className="text-white text-xs">2025</div>
-                  </div>
-                  <div className="text-white text-sm font-bold">TO</div>
-                  <div 
-                    className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center border-2"
-                    style={{ borderColor: customizations.accentColor }}
-                  >
-                    <div 
-                      className="font-bold text-lg"
-                      style={{ color: customizations.accentColor }}
-                    >
-                      10
-                    </div>
-                    <div className="text-white text-xs">AUG</div>
-                    <div className="text-white text-xs">2025</div>
-                  </div>
-                </div>
-                
-                {/* Status and Benefits */}
-                <div className="absolute bottom-20 left-56">
-                  <div 
-                    className="text-sm font-bold"
-                    style={{ color: customizations.accentColor }}
-                  >
-                    STATUS
-                  </div>
-                  <div className="text-green-400 text-xs font-bold">VALID</div>
-                </div>
-                
-                <div className="absolute bottom-20 left-80">
-                  <div 
-                    className="text-sm font-bold"
-                    style={{ color: customizations.accentColor }}
-                  >
-                    B USED
-                  </div>
-                  <div className="text-white text-xs font-bold">2/7</div>
-                </div>
-                
-                {/* Bottom info */}
-                <div className="absolute bottom-4 left-6">
-                  <div 
-                    className="text-xs font-bold"
-                    style={{ color: customizations.accentColor }}
-                  >
-                    PIN CODE: 
-                    <span className="text-white font-mono ml-1">123456</span>
-                  </div>
-                </div>
-                
-                <div className="absolute bottom-4 left-40">
-                  <div 
-                    className="text-xs font-bold"
-                    style={{ color: customizations.accentColor }}
-                  >
-                    REMAINING DAYS: 
-                    <span className="text-white ml-1">6 Days</span>
-                  </div>
-                </div>
-                
-                {/* QR Code */}
-                <div className="absolute top-6 right-6 bg-white rounded-lg p-3 w-24 h-24 flex items-center justify-center">
-                  <div className="w-18 h-18 grid grid-cols-8 gap-px">
-                    {[...Array(64)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        className={`bg-black ${
-                          [0,1,2,3,4,5,6,7,8,14,16,22,24,30,32,38,40,46,48,54,56,57,58,59,60,61,62,63].includes(i) ||
-                          Math.random() > 0.65 ? 'opacity-100' : 'opacity-0'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Action Buttons */}
       <div className="flex gap-4 pt-4">
@@ -613,8 +328,9 @@ const TicketTemplateSelector: React.FC<TicketTemplateSelectorProps> = ({
 
       <TicketDesignerModal
         isOpen={showDesigner}
-        onClose={() => setShowDesigner(false)}
+        onClose={() => { setShowDesigner(false); setTemplateToRedesign(null); }}
         onTemplateCreated={handleTemplateCreated}
+        initialTemplate={templateToRedesign}
       />
     </div>
   );
