@@ -119,13 +119,19 @@ const TicketDesignerModal: React.FC<TicketDesignerModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] max-h-[95vh] p-0">
-        <TicketDesigner
-          onSave={handleSave}
-          onPreview={handlePreview}
-          onBack={onClose}
-          initialTemplate={initialTemplate}
-        />
+      <DialogContent className="max-w-[95vw] h-[85vh] p-0">
+        <DialogHeader>
+          <DialogTitle className="sr-only">Ticket Designer</DialogTitle>
+          <DialogDescription className="sr-only">Design and customize your ticket template</DialogDescription>
+        </DialogHeader>
+        <div className="h-full">
+          <TicketDesigner
+            onSave={handleSave}
+            onPreview={handlePreview}
+            onBack={onClose}
+            initialTemplate={initialTemplate}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );

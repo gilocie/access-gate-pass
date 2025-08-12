@@ -101,18 +101,31 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
   ];
 
   useEffect(() => {
-    if (initialTemplate && initialTemplate.elements && initialTemplate.elements.length > 0) {
+    if (!initialTemplate) return;
+
+    // Apply initial template state when redesigning
+    if (initialTemplate.elements && initialTemplate.elements.length > 0) {
       setElements(initialTemplate.elements);
-      // Initialize history with the initial state
-      const initialState = {
-        elements: initialTemplate.elements,
-        backgroundColor,
-        backgroundImage
-      };
-      setHistory([initialState]);
-      setHistoryIndex(0);
     }
-  }, [initialTemplate, backgroundColor, backgroundImage]);
+    if (initialTemplate.canvas_width && initialTemplate.canvas_height) {
+      setCanvasSize({ width: initialTemplate.canvas_width, height: initialTemplate.canvas_height });
+    }
+    if (typeof initialTemplate.background_color === 'string') {
+      setBackgroundColor(initialTemplate.background_color);
+    }
+    if (initialTemplate.background_image_url) {
+      setBackgroundImage(initialTemplate.background_image_url);
+    }
+
+    // Initialize history with the applied initial state
+    const initialState = {
+      elements: initialTemplate.elements || [],
+      backgroundColor: initialTemplate.background_color || backgroundColor,
+      backgroundImage: initialTemplate.background_image_url || backgroundImage,
+    };
+    setHistory([initialState]);
+    setHistoryIndex(0);
+  }, [initialTemplate]);
 
   // Save design state when entering preview
   const handlePreview = () => {
@@ -301,7 +314,7 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-full bg-background">
       {/* Left Sidebar */}
       <div className="w-80 border-r bg-card p-4 overflow-y-auto">
         <div className="space-y-6">
@@ -325,160 +338,7 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
             </Button>
           </div>
 
-          {/* Canvas */}
-          <div className="flex-1">
-            {showPreview ? (
-              <div className="flex items-center justify-center h-full">
-                <div 
-                  className="border shadow-lg"
-                  style={{ 
-                    width: canvasSize.width, 
-                    height: canvasSize.height,
-                    backgroundColor,
-                    backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    position: 'relative'
-                  }}
-                >
-                  <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0, ${(100 - backgroundOpacity) / 100})` }} />
-                  {elements.map((element) => (
-                    <div
-                      key={element.id}
-                      style={{
-                        position: 'absolute',
-                        left: element.x,
-                        top: element.y,
-                        width: element.width,
-                        height: element.height,
-                        fontSize: element.fontSize,
-                        fontFamily: element.fontFamily,
-                        color: element.color,
-                        backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
-                        borderRadius: element.borderRadius,
-                        textAlign: element.textAlign,
-                        fontWeight: element.fontWeight,
-                        transform: `rotate(${element.rotation || 0}deg)`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: element.textAlign === 'center' ? 'center' : element.textAlign === 'right' ? 'flex-end' : 'flex-start',
-                        padding: '4px',
-                        overflow: 'hidden'
-                      }}
-                    >
-                      {element.type === 'qr-code' ? (
-                        <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
-                          <div className="w-full h-full grid grid-cols-6 gap-px">
-                            {[...Array(36)].map((_, i) => (
-                              <div 
-                                key={i} 
-                                className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ) : element.type === 'logo' ? (
-                        element.imageUrl ? (
-                          <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
-                        ) : (
-                          <ImageIcon className="w-6 h-6 text-gray-400" />
-                        )
-                      ) : element.type === 'benefits' ? (
-                        <span>0/3 Used</span>
-                      ) : (
-                        <span>{element.content}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div 
-                className="relative border-2 border-dashed border-muted-foreground/30 mx-auto"
-                style={{ 
-                  width: canvasSize.width, 
-                  height: canvasSize.height,
-                  backgroundColor,
-                  backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-                onClick={handleCanvasClick}
-              >
-                <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: `rgba(0,0,0, ${(100 - backgroundOpacity) / 100})` }} />
-                {elements.map((element) => (
-                  <div
-                    key={element.id}
-                    className={`absolute cursor-move group ${
-                      selectedElement?.id === element.id ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'
-                    }`}
-                    style={{
-                      left: element.x,
-                      top: element.y,
-                      width: element.width,
-                      height: element.height,
-                      fontSize: element.fontSize,
-                      fontFamily: element.fontFamily,
-                      color: element.color,
-                      backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
-                      borderRadius: element.borderRadius,
-                      textAlign: element.textAlign,
-                      fontWeight: element.fontWeight,
-                      transform: `rotate(${element.rotation || 0}deg)`,
-                      transformOrigin: 'center'
-                    }}
-                    onClick={(e) => handleElementClick(e, element)}
-                    onMouseDown={(e) => handleElementMouseDown(e, element)}
-                  >
-                    <div className="flex items-center justify-center h-full w-full p-1 overflow-hidden">
-                      {element.type === 'qr-code' ? (
-                        <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
-                          <div className="w-full h-full grid grid-cols-6 gap-px">
-                            {[...Array(36)].map((_, i) => (
-                              <div 
-                                key={i} 
-                                className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ) : element.type === 'logo' ? (
-                        element.imageUrl ? (
-                          <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
-                        ) : (
-                          <ImageIcon className="w-6 h-6 text-gray-400" />
-                        )
-                      ) : element.type === 'benefits' ? (
-                        <span className="text-center font-semibold">0/3 Used</span>
-                      ) : (
-                        <span className="text-center break-words">{element.content}</span>
-                      )}
-                    </div>
-                    
-                    {/* Resize handles */}
-                    {selectedElement?.id === element.id && (
-                      <>
-                        <div 
-                          className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-white cursor-se-resize"
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            // Add resize functionality here
-                          }}
-                        />
-                        <div 
-                          className="absolute -top-1 -right-1 w-3 h-3 bg-primary border border-white cursor-ne-resize"
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            // Add resize functionality here
-                          }}
-                        />
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Canvas moved to center workspace */}
 
           {/* Canvas Settings */}
           <div className="space-y-4">
@@ -574,6 +434,162 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Canvas Workspace */}
+      <div className="flex-1 p-6 overflow-auto">
+        <div className="flex items-center justify-center h-full">
+          {showPreview ? (
+            <div 
+              className="border shadow-lg"
+              style={{ 
+                width: canvasSize.width, 
+                height: canvasSize.height,
+                backgroundColor,
+                backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                position: 'relative'
+              }}
+            >
+              <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0, ${(100 - backgroundOpacity) / 100})` }} />
+              {elements.map((element) => (
+                <div
+                  key={element.id}
+                  style={{
+                    position: 'absolute',
+                    left: element.x,
+                    top: element.y,
+                    width: element.width,
+                    height: element.height,
+                    fontSize: element.fontSize,
+                    fontFamily: element.fontFamily,
+                    color: element.color,
+                    backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
+                    borderRadius: element.borderRadius,
+                    textAlign: element.textAlign,
+                    fontWeight: element.fontWeight,
+                    transform: `rotate(${element.rotation || 0}deg)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: element.textAlign === 'center' ? 'center' : element.textAlign === 'right' ? 'flex-end' : 'flex-start',
+                    padding: '4px',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {element.type === 'qr-code' ? (
+                    <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
+                      <div className="w-full h-full grid grid-cols-6 gap-px">
+                        {[...Array(36)].map((_, i) => (
+                          <div 
+                            key={i} 
+                            className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : element.type === 'logo' ? (
+                    element.imageUrl ? (
+                      <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                    ) : (
+                      <ImageIcon className="w-6 h-6 text-gray-400" />
+                    )
+                  ) : element.type === 'benefits' ? (
+                    <span>0/3 Used</span>
+                  ) : (
+                    <span>{element.content}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div 
+              ref={canvasRef}
+              className="relative border-2 border-dashed border-muted-foreground/30"
+              style={{ 
+                width: canvasSize.width, 
+                height: canvasSize.height,
+                backgroundColor,
+                backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }}
+              onClick={handleCanvasClick}
+            >
+              <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: `rgba(0,0,0, ${(100 - backgroundOpacity) / 100})` }} />
+              {elements.map((element) => (
+                <div
+                  key={element.id}
+                  className={`absolute cursor-move group ${
+                    selectedElement?.id === element.id ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'
+                  }`}
+                  style={{
+                    left: element.x,
+                    top: element.y,
+                    width: element.width,
+                    height: element.height,
+                    fontSize: element.fontSize,
+                    fontFamily: element.fontFamily,
+                    color: element.color,
+                    backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
+                    borderRadius: element.borderRadius,
+                    textAlign: element.textAlign,
+                    fontWeight: element.fontWeight,
+                    transform: `rotate(${element.rotation || 0}deg)`,
+                    transformOrigin: 'center'
+                  }}
+                  onClick={(e) => handleElementClick(e, element)}
+                  onMouseDown={(e) => handleElementMouseDown(e, element)}
+                >
+                  <div className="flex items-center justify-center h-full w-full p-1 overflow-hidden">
+                    {element.type === 'qr-code' ? (
+                      <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
+                        <div className="w-full h-full grid grid-cols-6 gap-px">
+                          {[...Array(36)].map((_, i) => (
+                            <div 
+                              key={i} 
+                              className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ) : element.type === 'logo' ? (
+                      element.imageUrl ? (
+                        <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                      ) : (
+                        <ImageIcon className="w-6 h-6 text-gray-400" />
+                      )
+                    ) : element.type === 'benefits' ? (
+                      <span className="text-center font-semibold">0/3 Used</span>
+                    ) : (
+                      <span className="text-center break-words">{element.content}</span>
+                    )}
+                  </div>
+                  
+                  {/* Resize handles */}
+                  {selectedElement?.id === element.id && (
+                    <>
+                      <div 
+                        className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-white cursor-se-resize"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          // Add resize functionality here
+                        }}
+                      />
+                      <div 
+                        className="absolute -top-1 -right-1 w-3 h-3 bg-primary border border-white cursor-ne-resize"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          // Add resize functionality here
+                        }}
+                      />
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
