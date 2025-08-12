@@ -845,12 +845,7 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
           </div>
         </div>
       </div>
-      </div>
     </div>
-  );
-};
-
-export default TicketDesigner;
   );
 };
 
