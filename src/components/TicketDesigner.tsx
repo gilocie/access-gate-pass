@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { 
   Type, 
   Image as ImageIcon, 
@@ -25,7 +26,9 @@ import {
   RotateCcw,
   Trash2,
   Undo,
-  Redo
+  Redo,
+  Ruler,
+  LayoutGrid
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,14 +72,25 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [backgroundOpacity, setBackgroundOpacity] = useState(80);
+  const [overlayColor, setOverlayColor] = useState('#000000');
+  const [backgroundType, setBackgroundType] = useState<'solid' | 'gradient'>('solid');
+  const [gradientStart, setGradientStart] = useState('#1e293b');
+  const [gradientEnd, setGradientEnd] = useState('#334155');
+  const [gradientAngle, setGradientAngle] = useState(135);
   const [showGridSnap, setShowGridSnap] = useState(true);
   const [history, setHistory] = useState<any[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showPreview, setShowPreview] = useState(false);
   const [lastDesignState, setLastDesignState] = useState<any>(null);
-  // Zoom & viewport
+  // Zoom, pan & viewport
   const viewportRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
+  const [tool, setTool] = useState<'select' | 'pan'>('select');
+  const [isPanning, setIsPanning] = useState(false);
+  const panStart = useRef<{ mouseX: number; mouseY: number; startX: number; startY: number } | null>(null);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [showGrid, setShowGrid] = useState(true);
+  const [showRulers, setShowRulers] = useState(false);
   // Resize/drag state
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<'n'|'s'|'e'|'w'|'ne'|'nw'|'se'|'sw'|null>(null);
