@@ -74,6 +74,9 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showPreview, setShowPreview] = useState(false);
   const [lastDesignState, setLastDesignState] = useState<any>(null);
+  // Zoom & viewport
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
   // Resize/drag state
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<'n'|'s'|'e'|'w'|'ne'|'nw'|'se'|'sw'|null>(null);
@@ -129,6 +132,16 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
     setHistory([initialState]);
     setHistoryIndex(0);
   }, [initialTemplate]);
+  // Auto fit canvas to viewport
+  useEffect(() => {
+    if (!viewportRef.current || showPreview) return;
+    const { clientWidth, clientHeight } = viewportRef.current;
+    if (!clientWidth || !clientHeight) return;
+    const scaleX = clientWidth / canvasSize.width;
+    const scaleY = clientHeight / canvasSize.height;
+    const next = Math.min(scaleX, scaleY) * 0.9;
+    setZoom(Math.max(0.25, Math.min(2, next)));
+  }, [canvasSize.width, canvasSize.height, showPreview]);
 
   // Save design state when entering preview
   const handlePreview = () => {
@@ -139,7 +152,6 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
     });
     setShowPreview(true);
   };
-
   // Restore design state when returning from preview
   const handleBackFromPreview = () => {
     if (lastDesignState) {
@@ -229,9 +241,11 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
     
     const rect = canvasRef.current?.getBoundingClientRect();
     if (rect) {
+      const scaledX = (e.clientX - rect.left) / zoom;
+      const scaledY = (e.clientY - rect.top) / zoom;
       setDragOffset({
-        x: e.clientX - rect.left - element.x,
-        y: e.clientY - rect.top - element.y
+        x: scaledX - element.x,
+        y: scaledY - element.y
       });
     }
   };
@@ -263,13 +277,16 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
 
+      const cursorX = (e.clientX - rect.left) / zoom;
+      const cursorY = (e.clientY - rect.top) / zoom;
+
       if (isDragging && selectedElement) {
-        const newX = clamp(e.clientX - rect.left - dragOffset.x, 0, canvasSize.width - selectedElement.width);
-        const newY = clamp(e.clientY - rect.top - dragOffset.y, 0, canvasSize.height - selectedElement.height);
+        const newX = clamp(cursorX - dragOffset.x, 0, canvasSize.width - selectedElement.width);
+        const newY = clamp(cursorY - dragOffset.y, 0, canvasSize.height - selectedElement.height);
         updateElement(selectedElement.id, { x: newX, y: newY });
       } else if (isResizing && resizeStart.current && selectedElement) {
-        const dx = e.clientX - resizeStart.current.mouseX;
-        const dy = e.clientY - resizeStart.current.mouseY;
+        const dx = (e.clientX - resizeStart.current.mouseX) / zoom;
+        const dy = (e.clientY - resizeStart.current.mouseY) / zoom;
 
         let newW = resizeStart.current.startW;
         let newH = resizeStart.current.startH;
@@ -314,7 +331,7 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
-  }, [isDragging, isResizing, selectedElement, dragOffset.x, dragOffset.y, canvasSize.width, canvasSize.height]);
+  }, [isDragging, isResizing, selectedElement, dragOffset.x, dragOffset.y, canvasSize.width, canvasSize.height, zoom]);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -586,22 +603,157 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
               ))}
             </div>
           ) : (
-            <div 
-              ref={canvasRef}
-              className="relative border-2 border-dashed border-muted-foreground/30"
-              style={{ 
-                width: canvasSize.width, 
-                height: canvasSize.height,
-                backgroundColor,
-                backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                overflow: 'hidden'
-              }}
-              onClick={handleCanvasClick}
-            >
-              <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: `rgba(0,0,0, ${(100 - backgroundOpacity) / 100})` }} />
-              {elements.map((element) => (
+            <div ref={viewportRef} className="relative w-full h-full overflow-auto">
+              {/* Zoom Controls */}
+              <div className="absolute top-3 right-3 z-20 bg-card/80 backdrop-blur border rounded-md shadow px-2 py-1 flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setZoom((z) => Math.max(0.25, +(z - 0.1).toFixed(2)))}
+                  aria-label="Zoom out"
+                >
+                  −
+                </Button>
+                <span className="text-sm text-muted-foreground w-12 text-center">
+                  {Math.round(zoom * 100)}%
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)))}
+                  aria-label="Zoom in"
+                >
+                  +
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    if (!viewportRef.current) return;
+                    const { clientWidth, clientHeight } = viewportRef.current;
+                    const scaleX = clientWidth / canvasSize.width;
+                    const scaleY = clientHeight / canvasSize.height;
+                    const next = Math.min(scaleX, scaleY) * 0.9;
+                    setZoom(Math.max(0.25, Math.min(2, next)));
+                  }}
+                >
+                  Fit
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-center w-full h-full p-8">
+                <div className="relative" style={{ width: canvasSize.width * zoom, height: canvasSize.height * zoom }}>
+                  <div 
+                    ref={canvasRef}
+                    className="relative border-2 border-dashed border-muted-foreground/30 bg-background"
+                    style={{ 
+                      width: canvasSize.width, 
+                      height: canvasSize.height,
+                      backgroundColor,
+                      backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      transform: `scale(${zoom})`,
+                      transformOrigin: 'top left',
+                      overflow: 'hidden'
+                    }}
+                    onClick={handleCanvasClick}
+                  >
+                    <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: `rgba(0,0,0, ${(100 - backgroundOpacity) / 100})` }} />
+                    {elements.map((element) => (
+                      <div
+                        key={element.id}
+                        className={`absolute cursor-move group ${
+                          selectedElement?.id === element.id ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'
+                        }`}
+                        style={{
+                          left: element.x,
+                          top: element.y,
+                          width: element.width,
+                          height: element.height,
+                          fontSize: element.fontSize,
+                          fontFamily: element.fontFamily,
+                          color: element.color,
+                          backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
+                          borderRadius: element.borderRadius,
+                          textAlign: element.textAlign,
+                          fontWeight: element.fontWeight,
+                          transform: `rotate(${element.rotation || 0}deg)`,
+                          transformOrigin: 'center'
+                        }}
+                        onClick={(e) => handleElementClick(e, element)}
+                        onMouseDown={(e) => handleElementMouseDown(e, element)}
+                      >
+                        <div className="flex items-center justify-center h-full w-full p-1 overflow-hidden">
+                          {element.type === 'qr-code' ? (
+                            <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
+                              <div className="w-full h-full grid grid-cols-6 gap-px">
+                                {[...Array(36)].map((_, i) => (
+                                  <div 
+                                    key={i} 
+                                    className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ) : element.type === 'logo' ? (
+                            element.imageUrl ? (
+                              <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                            ) : (
+                              <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                            )
+                          ) : element.type === 'benefits' ? (
+                            <span className="text-center font-semibold">0/3 Used</span>
+                          ) : (
+                            <span className="text-center break-words">{element.content}</span>
+                          )}
+                        </div>
+                        
+                        {/* Resize handles */}
+                        {selectedElement?.id === element.id && (
+                          <>
+                            {/* corners */}
+                            <div
+                              className="absolute -top-1 -left-1 w-3 h-3 bg-primary border border-background cursor-nw-resize"
+                              onMouseDown={(e) => startResize('nw', element, e)}
+                            />
+                            <div
+                              className="absolute -top-1 -right-1 w-3 h-3 bg-primary border border-background cursor-ne-resize"
+                              onMouseDown={(e) => startResize('ne', element, e)}
+                            />
+                            <div
+                              className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary border border-background cursor-sw-resize"
+                              onMouseDown={(e) => startResize('sw', element, e)}
+                            />
+                            <div
+                              className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-background cursor-se-resize"
+                              onMouseDown={(e) => startResize('se', element, e)}
+                            />
+                            {/* edges */}
+                            <div
+                              className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary border border-background cursor-n-resize"
+                              onMouseDown={(e) => startResize('n', element, e)}
+                            />
+                            <div
+                              className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary border border-background cursor-s-resize"
+                              onMouseDown={(e) => startResize('s', element, e)}
+                            />
+                            <div
+                              className="absolute top-1/2 -left-1 -translate-y-1/2 w-3 h-3 bg-primary border border-background cursor-w-resize"
+                              onMouseDown={(e) => startResize('w', element, e)}
+                            />
+                            <div
+                              className="absolute top-1/2 -right-1 -translate-y-1/2 w-3 h-3 bg-primary border border-background cursor-e-resize"
+                              onMouseDown={(e) => startResize('e', element, e)}
+                            />
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
                 <div
                   key={element.id}
                   className={`absolute cursor-move group ${

@@ -119,7 +119,7 @@ const TicketDesignerModal: React.FC<TicketDesignerModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[98vw] w-[1200px] h-[90vh] p-0 overflow-hidden">
+      <DialogContent className="fixed max-w-[98vw] w-[1200px] h-[90vh] p-0 overflow-hidden">
         <DialogHeader>
           <DialogTitle className="sr-only">Ticket Designer</DialogTitle>
           <DialogDescription className="sr-only">Design and customize your ticket template</DialogDescription>
