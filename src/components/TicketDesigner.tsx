@@ -32,6 +32,11 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import CanvasSettings from './TicketDesigner/CanvasSettings';
+import ElementsLibrary from './TicketDesigner/ElementsLibrary';
+import TemplateInfo from './TicketDesigner/TemplateInfo';
+import PropertiesPanel from './TicketDesigner/PropertiesPanel';
+import LayersPanel from './TicketDesigner/LayersPanel';
 
 interface TicketElement {
   id: string;
@@ -426,216 +431,238 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
     }
   };
 
+  const getBackgroundStyle = () => {
+    if (backgroundType === 'gradient') {
+      return {
+        background: `linear-gradient(${gradientAngle}deg, ${gradientStart}, ${gradientEnd})`
+      };
+    }
+    return {
+      backgroundColor
+    };
+  };
+
+  const moveLayer = (elementId: string, direction: 'up' | 'down') => {
+    const currentIndex = elements.findIndex(el => el.id === elementId);
+    if (currentIndex === -1) return;
+
+    const newElements = [...elements];
+    const targetIndex = direction === 'up' ? currentIndex + 1 : currentIndex - 1;
+    
+    if (targetIndex >= 0 && targetIndex < elements.length) {
+      [newElements[currentIndex], newElements[targetIndex]] = [newElements[targetIndex], newElements[currentIndex]];
+      setElements(newElements);
+    }
+  };
+
   return (
     <div className="flex h-full bg-background">
-      {/* Left Sidebar */}
-      <div className="w-80 border-r bg-card p-4 overflow-y-auto">
-        <div className="space-y-6">
-          <div className="flex gap-2 mb-4">
-            <Button onClick={handleSave} className="bg-gradient-primary">
-              Save Template
-            </Button>
-            <Button variant="outline" onClick={showPreview ? handleBackFromPreview : handlePreview}>
-              {showPreview ? 'Back to Designer' : 'Preview'}
-            </Button>
-            <Button variant="outline" onClick={onBack}>
-              Cancel
-            </Button>
-            <Button variant="outline" onClick={undo} disabled={historyIndex <= 0}>
-              <Undo className="w-4 h-4 mr-2" />
-              Undo
-            </Button>
-            <Button variant="outline" onClick={redo} disabled={historyIndex >= history.length - 1}>
-              <Redo className="w-4 h-4 mr-2" />
-              Redo
-            </Button>
-          </div>
-
-          {/* Canvas moved to center workspace */}
-
-          {/* Canvas Settings */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Canvas Settings</h3>
+      {/* Left Sidebar - Compact */}
+      <div className="w-60 border-r bg-card flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+          <div className="p-3 space-y-4">
+            <CanvasSettings
+              backgroundColor={backgroundColor}
+              setBackgroundColor={setBackgroundColor}
+              backgroundType={backgroundType}
+              setBackgroundType={setBackgroundType}
+              gradientStart={gradientStart}
+              setGradientStart={setGradientStart}
+              gradientEnd={gradientEnd}
+              setGradientEnd={setGradientEnd}
+              gradientAngle={gradientAngle}
+              setGradientAngle={setGradientAngle}
+              backgroundImage={backgroundImage}
+              backgroundOpacity={backgroundOpacity}
+              setBackgroundOpacity={setBackgroundOpacity}
+              overlayColor={overlayColor}
+              setOverlayColor={setOverlayColor}
+              onBackgroundImageUpload={handleBackgroundImageUpload}
+              onRemoveBackgroundImage={() => setBackgroundImage(null)}
+            />
             
-            <div className="space-y-2">
-              <Label>Background Color</Label>
-              <div className="flex gap-2">
-                <Input
-                  type="color"
-                  value={backgroundColor}
-                  onChange={(e) => setBackgroundColor(e.target.value)}
-                  className="w-20"
-                />
-                <Select value="solid" onValueChange={(value) => {}}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Background Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="solid">Solid Color</SelectItem>
-                    <SelectItem value="gradient">Gradient</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Gradient Colors (if gradient selected)</Label>
-              <div className="flex gap-2">
-                <Input
-                  type="color"
-                  value={backgroundColor}
-                  onChange={(e) => setBackgroundColor(e.target.value)}
-                  className="w-20"
-                  placeholder="Start"
-                />
-                <Input
-                  type="color"
-                  value="#3b82f6"
-                  onChange={() => {}}
-                  className="w-20"
-                  placeholder="End"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Background Image</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handleBackgroundImageUpload}
-              />
-              {backgroundImage && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBackgroundImage(null)}
-                >
-                  Remove Image
-                </Button>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Background Opacity ({backgroundOpacity}%)</Label>
-              <Slider
-                value={[backgroundOpacity]}
-                onValueChange={(value) => setBackgroundOpacity(value[0])}
-                max={100}
-                min={0}
-                step={1}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Add Shapes</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addElement('rectangle')}
-                >
-                  Rectangle
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addElement('circle')}
-                >
-                  Circle
-                </Button>
-              </div>
-            </div>
+            <ElementsLibrary onAddElement={addElement} />
+            
+            <TemplateInfo
+              templateName={templateName}
+              setTemplateName={setTemplateName}
+              templateCategory={templateCategory}
+              setTemplateCategory={setTemplateCategory}
+            />
           </div>
         </div>
       </div>
 
-      {/* Canvas Workspace */}
-      <div className="flex-1 p-6 overflow-auto">
-        <div className="flex items-center justify-center h-full">
-          {showPreview ? (
-            <div 
-              className="border shadow-lg"
-              style={{ 
-                width: canvasSize.width, 
-                height: canvasSize.height,
-                backgroundColor,
-                backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                position: 'relative'
-              }}
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Top Toolbar */}
+        <div className="h-12 border-b bg-card flex items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onBack} className="h-8 px-3">
+              Cancel
+            </Button>
+            <Separator orientation="vertical" className="h-6" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={undo}
+              disabled={historyIndex <= 0}
+              className="h-8 px-3"
             >
-              <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0, ${(100 - backgroundOpacity) / 100})` }} />
-              {elements.map((element) => (
-                <div
-                  key={element.id}
-                  style={{
-                    position: 'absolute',
-                    left: element.x,
-                    top: element.y,
-                    width: element.width,
-                    height: element.height,
-                    fontSize: element.fontSize,
-                    fontFamily: element.fontFamily,
-                    color: element.color,
-                    backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
-                    borderRadius: element.borderRadius,
-                    textAlign: element.textAlign,
-                    fontWeight: element.fontWeight,
-                    transform: `rotate(${element.rotation || 0}deg)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: element.textAlign === 'center' ? 'center' : element.textAlign === 'right' ? 'flex-end' : 'flex-start',
-                    padding: '4px',
-                    overflow: 'hidden'
-                  }}
-                >
-                  {element.type === 'qr-code' ? (
-                    <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
-                      <div className="w-full h-full grid grid-cols-6 gap-px">
-                        {[...Array(36)].map((_, i) => (
-                          <div 
-                            key={i} 
-                            className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
-                          />
-                        ))}
+              <Undo className="w-4 h-4 mr-1" />
+              Undo
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={redo}
+              disabled={historyIndex >= history.length - 1}
+              className="h-8 px-3"
+            >
+              <Redo className="w-4 h-4 mr-1" />
+              Redo
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <ToggleGroup type="single" value={tool} onValueChange={(value) => value && setTool(value as 'select' | 'pan')}>
+              <ToggleGroupItem value="select" size="sm" className="h-8 px-3">
+                <Move className="w-4 h-4 mr-1" />
+                Select
+              </ToggleGroupItem>
+              <ToggleGroupItem value="pan" size="sm" className="h-8 px-3">
+                <Move className="w-4 h-4 mr-1" />
+                Pan
+              </ToggleGroupItem>
+            </ToggleGroup>
+            
+            <Separator orientation="vertical" className="h-6" />
+            
+            <div className="flex items-center gap-1">
+              <Button
+                variant={showGrid ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowGrid(!showGrid)}
+                className="h-8 px-3"
+              >
+                <LayoutGrid className="w-4 h-4 mr-1" />
+                Grid
+              </Button>
+              <Button
+                variant={showRulers ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowRulers(!showRulers)}
+                className="h-8 px-3"
+              >
+                <Ruler className="w-4 h-4 mr-1" />
+                Rulers
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={showPreview ? handleBackFromPreview : handlePreview} className="h-8 px-3">
+              <Eye className="w-4 h-4 mr-1" />
+              {showPreview ? 'Edit' : 'Preview'}
+            </Button>
+            <Button onClick={handleSave} size="sm" className="h-8 px-3 bg-primary">
+              <Save className="w-4 h-4 mr-1" />
+              Save Template
+            </Button>
+          </div>
+        </div>
+
+        {/* Canvas Workspace */}
+        <div className="flex-1 relative overflow-hidden">
+          {showPreview ? (
+            <div className="flex items-center justify-center h-full p-8">
+              <div 
+                className="border shadow-lg relative"
+                style={{ 
+                  width: canvasSize.width, 
+                  height: canvasSize.height,
+                  ...getBackgroundStyle(),
+                  backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+              >
+                {backgroundImage && (
+                  <div 
+                    className="absolute inset-0" 
+                    style={{ 
+                      backgroundColor: `${overlayColor}${Math.round((100 - backgroundOpacity) * 2.55).toString(16).padStart(2, '0')}`
+                    }} 
+                  />
+                )}
+                {elements.map((element) => (
+                  <div
+                    key={element.id}
+                    style={{
+                      position: 'absolute',
+                      left: element.x,
+                      top: element.y,
+                      width: element.width,
+                      height: element.height,
+                      fontSize: element.fontSize,
+                      fontFamily: element.fontFamily,
+                      color: element.color,
+                      backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
+                      borderRadius: element.borderRadius,
+                      textAlign: element.textAlign,
+                      fontWeight: element.fontWeight,
+                      transform: `rotate(${element.rotation || 0}deg)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: element.textAlign === 'center' ? 'center' : element.textAlign === 'right' ? 'flex-end' : 'flex-start',
+                      padding: '4px',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {element.type === 'qr-code' ? (
+                      <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
+                        <div className="w-full h-full grid grid-cols-6 gap-px">
+                          {[...Array(36)].map((_, i) => (
+                            <div 
+                              key={i} 
+                              className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ) : element.type === 'logo' ? (
-                    element.imageUrl ? (
-                      <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                    ) : element.type === 'logo' ? (
+                      element.imageUrl ? (
+                        <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                      ) : (
+                        <ImageIcon className="w-6 h-6 text-gray-400" />
+                      )
                     ) : (
-                      <ImageIcon className="w-6 h-6 text-gray-400" />
-                    )
-                  ) : element.type === 'benefits' ? (
-                    <span>0/3 Used</span>
-                  ) : (
-                    <span>{element.content}</span>
-                  )}
-                </div>
-              ))}
+                      <span>{element.content}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
-            <div ref={viewportRef} className="relative w-full h-full overflow-auto">
+            <>
               {/* Zoom Controls */}
-              <div className="absolute top-3 right-3 z-20 bg-card/80 backdrop-blur border rounded-md shadow px-2 py-1 flex items-center gap-2">
+              <div className="absolute top-4 right-4 z-20 bg-card/95 backdrop-blur border rounded-lg shadow-lg px-3 py-2 flex items-center gap-2">
                 <Button
                   variant="outline"
-                  size="icon"
+                  size="sm"
                   onClick={() => setZoom((z) => Math.max(0.25, +(z - 0.1).toFixed(2)))}
-                  aria-label="Zoom out"
+                  className="h-7 w-7 p-0"
                 >
                   −
                 </Button>
-                <span className="text-sm text-muted-foreground w-12 text-center">
+                <span className="text-xs text-muted-foreground w-12 text-center font-mono">
                   {Math.round(zoom * 100)}%
                 </span>
                 <Button
                   variant="outline"
-                  size="icon"
+                  size="sm"
                   onClick={() => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)))}
-                  aria-label="Zoom in"
+                  className="h-7 w-7 p-0"
                 >
                   +
                 </Button>
@@ -647,252 +674,183 @@ const TicketDesigner: React.FC<TicketDesignerProps> = ({ onSave, onPreview, onBa
                     const { clientWidth, clientHeight } = viewportRef.current;
                     const scaleX = clientWidth / canvasSize.width;
                     const scaleY = clientHeight / canvasSize.height;
-                    const next = Math.min(scaleX, scaleY) * 0.9;
+                    const next = Math.min(scaleX, scaleY) * 0.8;
                     setZoom(Math.max(0.25, Math.min(2, next)));
                   }}
+                  className="h-7 px-3 text-xs"
                 >
                   Fit
                 </Button>
               </div>
 
-              <div className="flex items-center justify-center w-full h-full p-8">
-                <div className="relative" style={{ width: canvasSize.width * zoom, height: canvasSize.height * zoom }}>
-                  <div 
-                    ref={canvasRef}
-                    className="relative border-2 border-dashed border-muted-foreground/30 bg-background"
-                    style={{ 
-                      width: canvasSize.width, 
-                      height: canvasSize.height,
-                      backgroundColor,
-                      backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      transform: `scale(${zoom})`,
-                      transformOrigin: 'top left',
-                      overflow: 'hidden'
-                    }}
-                    onClick={handleCanvasClick}
-                  >
-                    <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: `rgba(0,0,0, ${(100 - backgroundOpacity) / 100})` }} />
-                    {elements.map((element) => (
-                      <div
-                        key={element.id}
-                        className={`absolute cursor-move group ${
-                          selectedElement?.id === element.id ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'
-                        }`}
+              {/* Canvas Container */}
+              <div ref={viewportRef} className="w-full h-full overflow-auto bg-muted/30">
+                <div className="flex items-center justify-center min-w-full min-h-full p-8">
+                  <div className="relative" style={{ width: canvasSize.width * zoom, height: canvasSize.height * zoom }}>
+                    {/* Grid Background */}
+                    {showGrid && (
+                      <div 
+                        className="absolute inset-0 opacity-20"
                         style={{
-                          left: element.x,
-                          top: element.y,
-                          width: element.width,
-                          height: element.height,
-                          fontSize: element.fontSize,
-                          fontFamily: element.fontFamily,
-                          color: element.color,
-                          backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
-                          borderRadius: element.borderRadius,
-                          textAlign: element.textAlign,
-                          fontWeight: element.fontWeight,
-                          transform: `rotate(${element.rotation || 0}deg)`,
-                          transformOrigin: 'center'
+                          backgroundImage: `
+                            linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
+                          `,
+                          backgroundSize: `${20 * zoom}px ${20 * zoom}px`
                         }}
-                        onClick={(e) => handleElementClick(e, element)}
-                        onMouseDown={(e) => handleElementMouseDown(e, element)}
-                      >
-                        <div className="flex items-center justify-center h-full w-full p-1 overflow-hidden">
-                          {element.type === 'qr-code' ? (
-                            <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
-                              <div className="w-full h-full grid grid-cols-6 gap-px">
-                                {[...Array(36)].map((_, i) => (
-                                  <div 
-                                    key={i} 
-                                    className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
-                                  />
-                                ))}
+                      />
+                    )}
+                    
+                    {/* Canvas */}
+                    <div 
+                      ref={canvasRef}
+                      className="relative border-2 border-border shadow-lg bg-background"
+                      style={{ 
+                        width: canvasSize.width, 
+                        height: canvasSize.height,
+                        ...getBackgroundStyle(),
+                        backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        transform: `scale(${zoom})`,
+                        transformOrigin: 'top left',
+                        overflow: 'hidden'
+                      }}
+                      onClick={handleCanvasClick}
+                    >
+                      {backgroundImage && (
+                        <div 
+                          className="absolute inset-0 pointer-events-none" 
+                          style={{ 
+                            backgroundColor: `${overlayColor}${Math.round((100 - backgroundOpacity) * 2.55).toString(16).padStart(2, '0')}`
+                          }} 
+                        />
+                      )}
+                      
+                      {elements.map((element) => (
+                        <div
+                          key={element.id}
+                          className={`absolute cursor-move group ${
+                            selectedElement?.id === element.id ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground'
+                          }`}
+                          style={{
+                            left: element.x,
+                            top: element.y,
+                            width: element.width,
+                            height: element.height,
+                            fontSize: element.fontSize,
+                            fontFamily: element.fontFamily,
+                            color: element.color,
+                            backgroundColor: element.backgroundColor !== 'transparent' ? element.backgroundColor : undefined,
+                            borderRadius: element.borderRadius,
+                            textAlign: element.textAlign,
+                            fontWeight: element.fontWeight,
+                            transform: `rotate(${element.rotation || 0}deg)`,
+                            transformOrigin: 'center'
+                          }}
+                          onClick={(e) => handleElementClick(e, element)}
+                          onMouseDown={(e) => handleElementMouseDown(e, element)}
+                        >
+                          <div className="flex items-center justify-center h-full w-full p-1 overflow-hidden">
+                            {element.type === 'qr-code' ? (
+                              <div className="w-full h-full bg-white rounded p-1 flex items-center justify-center">
+                                <div className="w-full h-full grid grid-cols-6 gap-px">
+                                  {[...Array(36)].map((_, i) => (
+                                    <div 
+                                      key={i} 
+                                      className={`bg-black ${Math.random() > 0.6 ? 'opacity-100' : 'opacity-0'}`}
+                                    />
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          ) : element.type === 'logo' ? (
-                            element.imageUrl ? (
-                              <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                            ) : element.type === 'logo' ? (
+                              element.imageUrl ? (
+                                <img src={element.imageUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                              ) : (
+                                <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                              )
                             ) : (
-                              <ImageIcon className="w-6 h-6 text-muted-foreground" />
-                            )
-                          ) : element.type === 'benefits' ? (
-                            <span className="text-center font-semibold">0/3 Used</span>
-                          ) : (
-                            <span className="text-center break-words">{element.content}</span>
+                              <span className="text-center break-words">{element.content}</span>
+                            )}
+                          </div>
+                          
+                          {/* Resize handles */}
+                          {selectedElement?.id === element.id && (
+                            <>
+                              {/* corners */}
+                              <div
+                                className="absolute -top-1 -left-1 w-3 h-3 bg-primary border border-background cursor-nw-resize rounded-full"
+                                onMouseDown={(e) => startResize('nw', element, e)}
+                              />
+                              <div
+                                className="absolute -top-1 -right-1 w-3 h-3 bg-primary border border-background cursor-ne-resize rounded-full"
+                                onMouseDown={(e) => startResize('ne', element, e)}
+                              />
+                              <div
+                                className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary border border-background cursor-sw-resize rounded-full"
+                                onMouseDown={(e) => startResize('sw', element, e)}
+                              />
+                              <div
+                                className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-background cursor-se-resize rounded-full"
+                                onMouseDown={(e) => startResize('se', element, e)}
+                              />
+                              {/* edges */}
+                              <div
+                                className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary border border-background cursor-n-resize rounded-full"
+                                onMouseDown={(e) => startResize('n', element, e)}
+                              />
+                              <div
+                                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary border border-background cursor-s-resize rounded-full"
+                                onMouseDown={(e) => startResize('s', element, e)}
+                              />
+                              <div
+                                className="absolute top-1/2 -left-1 -translate-y-1/2 w-3 h-3 bg-primary border border-background cursor-w-resize rounded-full"
+                                onMouseDown={(e) => startResize('w', element, e)}
+                              />
+                              <div
+                                className="absolute top-1/2 -right-1 -translate-y-1/2 w-3 h-3 bg-primary border border-background cursor-e-resize rounded-full"
+                                onMouseDown={(e) => startResize('e', element, e)}
+                              />
+                            </>
                           )}
                         </div>
-                        
-                        {/* Resize handles */}
-                        {selectedElement?.id === element.id && (
-                          <>
-                            {/* corners */}
-                            <div
-                              className="absolute -top-1 -left-1 w-3 h-3 bg-primary border border-background cursor-nw-resize"
-                              onMouseDown={(e) => startResize('nw', element, e)}
-                            />
-                            <div
-                              className="absolute -top-1 -right-1 w-3 h-3 bg-primary border border-background cursor-ne-resize"
-                              onMouseDown={(e) => startResize('ne', element, e)}
-                            />
-                            <div
-                              className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary border border-background cursor-sw-resize"
-                              onMouseDown={(e) => startResize('sw', element, e)}
-                            />
-                            <div
-                              className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-background cursor-se-resize"
-                              onMouseDown={(e) => startResize('se', element, e)}
-                            />
-                            {/* edges */}
-                            <div
-                              className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary border border-background cursor-n-resize"
-                              onMouseDown={(e) => startResize('n', element, e)}
-                            />
-                            <div
-                              className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary border border-background cursor-s-resize"
-                              onMouseDown={(e) => startResize('s', element, e)}
-                            />
-                            <div
-                              className="absolute top-1/2 -left-1 -translate-y-1/2 w-3 h-3 bg-primary border border-background cursor-w-resize"
-                              onMouseDown={(e) => startResize('w', element, e)}
-                            />
-                            <div
-                              className="absolute top-1/2 -right-1 -translate-y-1/2 w-3 h-3 bg-primary border border-background cursor-e-resize"
-                              onMouseDown={(e) => startResize('e', element, e)}
-                            />
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right Sidebar */}
-      <div className="w-80 border-l bg-card p-4 overflow-y-auto">
-        <div className="space-y-6">
-          {/* Element Library */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Elements</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {elementTypes.map((elementType) => {
-                const Icon = elementType.icon;
-                return (
-                  <Button
-                    key={elementType.type}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addElement(elementType.type as TicketElement['type'])}
-                    className="flex flex-col items-center gap-1"
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="text-xs">{elementType.label}</span>
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Element Settings */}
-          {selectedElement && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Element Settings</h3>
-              
-              {selectedElement.type === 'logo' && (
-                <div className="space-y-2">
-                  <Label>Logo Upload</Label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="mb-2"
-                  />
-                  <Input
-                    type="text"
-                    placeholder="Or paste image URL"
-                    value={selectedElement.imageUrl || ''}
-                    onChange={(e) => updateElement(selectedElement.id, { imageUrl: e.target.value })}
-                  />
-                  <div className="space-y-2">
-                    <Label>Background Color</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="color"
-                        value={selectedElement.backgroundColor || '#ffffff'}
-                        onChange={(e) => updateElement(selectedElement.id, { backgroundColor: e.target.value })}
-                        className="w-20"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateElement(selectedElement.id, { backgroundColor: 'transparent' })}
-                      >
-                        Transparent
-                      </Button>
+                      ))}
                     </div>
                   </div>
                 </div>
-              )}
-
-              {selectedElement.type !== 'qr-code' && selectedElement.type !== 'logo' && (
-                <div className="space-y-2">
-                  <Label>Content</Label>
-                  <Textarea
-                    placeholder="Enter text content"
-                    value={selectedElement.content || ''}
-                    onChange={(e) => updateElement(selectedElement.id, { content: e.target.value })}
-                  />
-                </div>
-              )}
-
-              {selectedElement.type === 'benefits' && (
-                <div className="space-y-2">
-                  <Label>Benefits Display Format</Label>
-                  <p className="text-sm text-muted-foreground">
-                    This element will automatically show "X/Y used" where X is used benefits and Y is total benefits.
-                  </p>
-                </div>
-              )}
-            </div>
+              </div>
+            </>
           )}
+        </div>
+      </div>
 
-          {/* Template Info */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Template Info</h3>
-            <div className="space-y-2">
-              <Label>Template Name</Label>
-              <Input
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="Enter template name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select value={templateCategory} onValueChange={setTemplateCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="business">Business</SelectItem>
-                  <SelectItem value="technology">Technology</SelectItem>
-                  <SelectItem value="entertainment">Entertainment</SelectItem>
-                  <SelectItem value="sports">Sports</SelectItem>
-                  <SelectItem value="education">Education</SelectItem>
-                  <SelectItem value="wedding">Wedding</SelectItem>
-                  <SelectItem value="party">Party</SelectItem>
-                  <SelectItem value="formal">Formal</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Right Sidebar - Properties & Layers */}
+      <div className="w-80 border-l bg-card flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+          <div className="p-3 space-y-4">
+            <PropertiesPanel
+              selectedElement={selectedElement}
+              onUpdateElement={updateElement}
+              onDeleteElement={deleteElement}
+              onImageUpload={handleImageUpload}
+            />
+            
+            <LayersPanel
+              elements={elements}
+              selectedElement={selectedElement}
+              onSelectElement={(element) => setSelectedElement(element)}
+              onMoveLayer={moveLayer}
+              onDeleteElement={deleteElement}
+            />
           </div>
         </div>
       </div>
+      </div>
     </div>
+  );
+};
+
+export default TicketDesigner;
   );
 };
 
